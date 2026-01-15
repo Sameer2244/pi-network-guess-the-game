@@ -100,6 +100,18 @@ const App: React.FC = () => {
     setCurrentRoom(null);
   };
 
+  const handleMockMode = () => {
+    // Create a mock user for testing/desktop
+    const mockUser: PiUser = {
+      uid: 'mock-user-' + Math.floor(Math.random() * 1000),
+      username: 'Guest_User',
+      accessToken: 'mock-token-123'
+    };
+    setUser(mockUser);
+    setCoins(1000); // Give some mock coins
+    setError(null);
+  };
+
   if (loading) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-gray-900 text-purple-400 text-xl font-bold">
@@ -110,15 +122,27 @@ const App: React.FC = () => {
 
   if (error) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-gray-900 text-white p-6 text-center">
-        <h2 className="text-xl text-red-500 font-bold mb-2">Connection Error</h2>
-        <p className="mb-4">{error}</p>
-        <button
-          onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-purple-600 rounded hover:bg-purple-500 transition-colors"
-        >
-          Retry
-        </button>
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-gray-900 text-white p-6 text-center max-w-md mx-auto">
+        <h2 className="text-xl text-red-500 font-bold mb-4">Connection Failed</h2>
+        <p className="mb-6 text-gray-300">
+          {error.includes("timed out")
+            ? "Could not connect to Pi Browser. Are you running this in a standard browser (Chrome/Edge)? This app requires the official Pi Browser app to log in."
+            : error}
+        </p>
+        <div className="flex gap-4">
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors border border-gray-600"
+          >
+            Retry
+          </button>
+          <button
+            onClick={handleMockMode}
+            className="px-6 py-2 bg-purple-600 rounded hover:bg-purple-500 transition-colors font-bold"
+          >
+            Play in Mock Mode (Desktop)
+          </button>
+        </div>
       </div>
     );
   }
@@ -135,6 +159,10 @@ const App: React.FC = () => {
           <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-yellow-400">
             PiDraw
           </span>
+          <span className="text-xs text-gray-500 border border-gray-600 rounded px-1">v1.0.2</span>
+          {user.username === 'Guest_User' && (
+            <span className="text-xs bg-yellow-500/20 text-yellow-500 border border-yellow-500/50 rounded px-2 py-0.5">Mock Mode</span>
+          )}
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center bg-gray-700 rounded-full px-3 py-1">
