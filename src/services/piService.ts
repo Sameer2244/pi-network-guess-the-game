@@ -36,7 +36,10 @@ class PiNetworkService {
   private init() {
     if (window.Pi) {
       try {
-        window.Pi.init({ version: '2.0', sandbox: true });
+        // logs show "SDKMessaging instantiated on Pi environment: production"
+        // attempt to use sandbox: true caused origin mismatch errors.
+        // Switching to sandbox: false for production environment.
+        window.Pi.init({ version: '2.0', sandbox: false });
         this.isInitialized = true;
         console.log("Pi SDK initialized successfully");
       } catch (e) {
