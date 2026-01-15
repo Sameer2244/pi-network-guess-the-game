@@ -8,17 +8,14 @@ import type { PiUser, Room } from './types';
 import { GamePhase } from './types';
 
 // Mock rooms data
-const MOCK_ROOMS: Room[] = [
-  { id: '1', name: 'General Art', maxPlayers: 8, currentPlayers: 3 },
-  { id: '2', name: 'Pi Network Fans', maxPlayers: 8, currentPlayers: 6 },
-];
-
 const App: React.FC = () => {
   const [user, setUser] = useState<PiUser | null>(null);
   const [phase, setPhase] = useState<GamePhase>(GamePhase.LOBBY);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [coins, setCoins] = useState(0); // Mock Economy
+
+  const [rooms, setRooms] = useState<Room[]>([]);
 
   // Game State
   const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
@@ -36,7 +33,7 @@ const App: React.FC = () => {
       try {
         const userData = await piService.authenticate();
         setUser(userData);
-        socketService.connect(userData.accessToken || 'mock');
+        socketService.connect(userData.accessToken || 'mock', userData.username, userData.uid);
       } catch (err: any) {
         console.error("Auth Error", err);
         setError(err.message || "Authentication Failed");
@@ -47,40 +44,68 @@ const App: React.FC = () => {
     init();
   }, []);
 
-  // Timer Logic
+  // Socket Listeners
   useEffect(() => {
-    let interval: ReturnType<typeof setInterval>;
-    if (phase === GamePhase.PLAYING && timer > 0) {
-      interval = setInterval(() => setTimer(t => t - 1), 1000);
-    } else if (timer === 0 && phase === GamePhase.PLAYING) {
-      // Round End logic
-      setPhase(GamePhase.ROUND_END);
-    }
-    return () => clearInterval(interval);
-  }, [phase, timer]);
+    if (!user) return;
+
+    socketService.on('rooms_update', (roomsData: Room[]) => {
+      setRooms(roomsData);
+    });
+
+    socketService.on('room_state', (data: any) => {
+      // data: { id, players, gameState }
+      const { id, players, gameState } = data;
+
+      // Check if we are in this room or joining it
+      setCurrentRoom((prev) => ({
+        ...prev,
+        id: id,
+        name: id, // TODO: server should send name
+        maxPlayers: 8,
+        currentPlayers: players.length,
+        // We can store players list if needed
+      }));
+
+      setPhase(gameState.phase);
+
+      if (gameState.currentDrawer) {
+        setIsDrawer(gameState.currentDrawer === socketService.socketId);
+      }
+
+      if (gameState.currentWord) {
+        setWord(gameState.currentWord);
+      } else {
+        setWord(null);
+      }
+
+      if (gameState.timer !== undefined) {
+        setTimer(gameState.timer);
+      }
+    });
+
+    socketService.on('timer_update', (t: number) => {
+      setTimer(t);
+    });
+
+    // Cleanup listeners
+    return () => {
+      socketService.off('rooms_update', () => { });
+      socketService.off('room_state', () => { });
+      socketService.off('timer_update', () => { });
+    };
+  }, [user]);
 
   const handleCreateRoom = () => {
-    // In real app, API call to create room
-    const newRoom = { id: '3', name: `${user?.username}'s Room`, maxPlayers: 8, currentPlayers: 1 };
-    setCurrentRoom(newRoom);
-    startGame(true);
+    socketService.emit('create_room', `${user?.username}'s Room`);
   };
 
   const handleJoinRoom = (roomId: string) => {
-    const room = MOCK_ROOMS.find(r => r.id === roomId);
-    if (room) {
-      setCurrentRoom(room);
-      startGame(false);
-    }
+    socketService.emit('join_room', roomId);
   };
 
-  const startGame = (drawer: boolean) => {
-    setPhase(GamePhase.PLAYING);
-    setIsDrawer(drawer);
-    setTimer(60);
-    if (drawer) setWord("Apple"); // Mock word
-    else setWord(null);
-  };
+  const handleStartGame = () => {
+    socketService.emit('start_game', {});
+  }
 
   const handleBuyCoins = async () => {
     try {
@@ -96,6 +121,7 @@ const App: React.FC = () => {
   };
 
   const handleLeaveRoom = () => {
+    socketService.emit('leave_room', {});
     setPhase(GamePhase.LOBBY);
     setCurrentRoom(null);
   };
@@ -186,15 +212,45 @@ const App: React.FC = () => {
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden relative">
-        {phase === GamePhase.LOBBY && (
+        {!currentRoom && (
           <Lobby
-            rooms={MOCK_ROOMS}
+            rooms={rooms}
             onCreateRoom={handleCreateRoom}
             onJoinRoom={handleJoinRoom}
           />
         )}
 
-        {phase === GamePhase.PLAYING && currentRoom && (
+        {currentRoom && phase === GamePhase.LOBBY && (
+          <div className="flex flex-col items-center justify-center h-full bg-gray-900 text-white">
+            <div className="bg-gray-800 p-10 rounded-xl shadow-2xl border border-gray-700 text-center">
+              <h2 className="text-3xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">Waiting for Players...</h2>
+              <p className="mb-6 text-xl text-gray-300">Room: <span className="font-bold text-white">{currentRoom.name}</span></p>
+
+              <div className="mb-8 p-4 bg-gray-700 rounded-lg">
+                <p className="text-2xl font-mono">{currentRoom.currentPlayers} / {currentRoom.maxPlayers}</p>
+                <p className="text-sm text-gray-400">Players Joined</p>
+              </div>
+
+              <div className="flex flex-col gap-4">
+                <button
+                  onClick={handleStartGame}
+                  className="px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg text-xl font-bold hover:from-green-400 hover:to-emerald-500 transition-all shadow-lg text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={currentRoom.currentPlayers < 2}
+                >
+                  Start Game
+                </button>
+                <button onClick={handleLeaveRoom} className="text-gray-400 hover:text-white underline transition-colors">
+                  Leave Room
+                </button>
+              </div>
+              {currentRoom.currentPlayers < 2 && (
+                <p className="mt-4 text-yellow-500 text-sm">Need at least 2 players to start.</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {currentRoom && phase === GamePhase.PLAYING && (
           <div className="flex h-full flex-col md:flex-row">
             {/* Left Sidebar: Player List & Tools (Mobile: Top) */}
             <div className="bg-gray-800 md:w-48 p-2 flex md:flex-col gap-2 overflow-x-auto md:overflow-visible shrink-0 border-r border-gray-700">
@@ -275,9 +331,12 @@ const App: React.FC = () => {
           <div className="absolute inset-0 z-50 bg-black/80 flex items-center justify-center">
             <div className="bg-gray-800 p-8 rounded-xl text-center border border-purple-500 shadow-2xl">
               <h2 className="text-3xl font-bold mb-4 text-white">Round Over!</h2>
-              <p className="text-xl text-gray-300 mb-6">The word was: <span className="text-green-400 font-bold">Apple</span></p>
+              {/* <p className="text-xl text-gray-300 mb-6">The word was: <span className="text-green-400 font-bold">Apple</span></p> */}
+              {/* TODO: Display word from server */}
               <button
-                onClick={() => setPhase(GamePhase.LOBBY)}
+                onClick={() => {
+                  handleLeaveRoom(); // Simple reset for now
+                }}
                 className="px-6 py-2 bg-purple-600 rounded text-white font-bold hover:bg-purple-500"
               >
                 Back to Lobby

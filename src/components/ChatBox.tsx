@@ -46,11 +46,7 @@ export const ChatBox: React.FC<ChatBoxProps> = ({ playerId, username }) => {
     e.preventDefault();
     if (!input.trim()) return;
 
-    socketService.emit('send_chat', {
-      playerId,
-      username,
-      text: input
-    });
+    socketService.emit('send_message', input);
     setInput('');
   };
 
