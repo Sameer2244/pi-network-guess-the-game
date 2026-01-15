@@ -72,22 +72,36 @@ io.on('connection', (socket: Socket) => {
 
   // 2. Create Room
   socket.on('create_room', (roomName: string) => {
+    const player = players.get(socket.id);
+    if (!player) return;
+
+    // Leave existing room if any
+    if (player.roomId) {
+        leaveRoom(socket);
+    }
+
     const roomId = uuidv4();
     const newRoom: Room = {
         id: roomId,
         name: roomName || `Room ${roomId.substr(0,4)}`,
         maxPlayers: 8,
-        players: [],
+        players: [player], // Add creator immediately
         gameState: {
             phase: GamePhase.LOBBY,
             timer: 0
         }
     };
-    rooms.set(roomId, newRoom);
-    broadcastRoomsUpdate();
     
-    // Auto-join creator
-    joinRoom(socket, roomId);
+    // Update relationships
+    rooms.set(roomId, newRoom);
+    player.roomId = roomId;
+    socket.join(roomId);
+    
+    console.log(`Room Created: ${newRoom.name} (${roomId}) by ${player.username}`);
+
+    // Broadcast updates
+    broadcastRoomsUpdate();
+    broadcastRoomState(roomId);
   });
 
   // 3. Join Room
@@ -219,6 +233,7 @@ function leaveRoom(socket: Socket) {
 
         if (room.players.length === 0) {
             rooms.delete(roomId);
+            console.log(`Room Deleted (Empty): ${roomId}`);
         } else {
              // Handle if drawer left
              if (room.gameState.currentDrawer === player.id) {
