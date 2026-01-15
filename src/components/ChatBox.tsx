@@ -7,7 +7,7 @@ interface ChatBoxProps {
   username: string;
 }
 
-export const ChatBox: React.FC<ChatBoxProps> = ({ playerId, username }) => {
+export const ChatBox: React.FC<ChatBoxProps> = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);

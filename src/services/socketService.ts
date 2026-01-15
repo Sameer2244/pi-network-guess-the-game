@@ -1,5 +1,4 @@
 import { io, Socket } from 'socket.io-client';
-import type { ChatMessage, DrawEvent, Room, Player } from '../types';
 
 // TODO: Use env variable for URL
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
@@ -14,7 +13,7 @@ class SocketService {
     return this.socket?.id;
   }
 
-  public connect(token: string, username: string, uid: string) {
+  public connect(_token: string, username: string, uid: string) {
     if (this.socket?.connected) return;
 
     this.socket = io(SERVER_URL, {
