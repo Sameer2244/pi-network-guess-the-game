@@ -23,12 +23,30 @@ const App: React.FC = () => {
   const [timer, setTimer] = useState(60);
   const [word, setWord] = useState<string | null>(null); // Only drawer sees this
 
+  // Debug State
+  const [showLogs, setShowLogs] = useState(false);
+  const [logs, setLogs] = useState<string[]>([]);
+  const logsEndRef = useRef<HTMLDivElement>(null);
+
   // Drawing State
   const [color, setColor] = useState('#000000');
   const [lineWidth, setLineWidth] = useState(3);
+
   const clearCanvasRef = useRef<() => void>(() => { });
 
+  // Auto-scroll logs
   useEffect(() => {
+    if (showLogs && logsEndRef.current) {
+      logsEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [logs, showLogs]);
+
+  useEffect(() => {
+    // Subscribe to Pi Service Logs
+    piService.onLog((msg) => {
+      setLogs(prev => [...prev, msg]);
+    });
+
     const init = async () => {
       try {
         const userData = await piService.authenticate();
@@ -185,12 +203,18 @@ const App: React.FC = () => {
           <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-yellow-400">
             PiDraw
           </span>
-          <span className="text-xs text-gray-500 border border-gray-600 rounded px-1">v1.0.2</span>
+          <span className="text-xs text-gray-500 border border-gray-600 rounded px-1">v1.0.3</span>
           {user.username === 'Guest_User' && (
             <span className="text-xs bg-yellow-500/20 text-yellow-500 border border-yellow-500/50 rounded px-2 py-0.5">Mock Mode</span>
           )}
         </div>
         <div className="flex items-center gap-4">
+          <button
+            onClick={() => setShowLogs(!showLogs)}
+            className="text-xs text-gray-400 border border-gray-600 px-2 py-1 rounded hover:bg-gray-700"
+          >
+            {showLogs ? 'Hide Logs' : 'Debug Logs'}
+          </button>
           <div className="flex items-center bg-gray-700 rounded-full px-3 py-1">
             <span className="text-yellow-400 font-bold mr-1">¢</span>
             <span className="text-sm font-mono">{coins}</span>
@@ -209,6 +233,19 @@ const App: React.FC = () => {
           </div>
         </div>
       </header>
+
+      {/* Debug Logs Overlay */}
+      {showLogs && (
+        <div className="fixed top-14 left-0 right-0 h-48 bg-black/90 z-[100] overflow-y-auto border-b border-gray-600 p-2 font-mono text-xs text-green-400">
+          {logs.length === 0 && <span className="text-gray-500">Waiting for logs...</span>}
+          {logs.map((log, i) => (
+            <div key={i} className="border-b border-gray-800 py-0.5 break-all">
+              {log}
+            </div>
+          ))}
+          <div ref={logsEndRef} />
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden relative">

@@ -28,62 +28,78 @@ declare global {
 
 class PiNetworkService {
   private isInitialized = false;
+  private logListeners: ((msg: string) => void)[] = [];
 
   constructor() {
     this.init();
   }
 
+  // --- Logger Implementation ---
+  public onLog(listener: (msg: string) => void) {
+    this.logListeners.push(listener);
+  }
+
+  private log(message: string, data?: any) {
+    const timestamp = new Date().toLocaleTimeString();
+    const formattedMsg = data ? `${message} | Data: ${JSON.stringify(data)}` : message;
+    const fullLog = `[${timestamp}] ${formattedMsg}`;
+    
+    console.log(fullLog);
+    this.logListeners.forEach(l => l(fullLog));
+  }
+
+  private error(message: string, err?: any) {
+    const timestamp = new Date().toLocaleTimeString();
+    const formattedMsg = err ? `${message} | Error: ${err.message || JSON.stringify(err)}` : message;
+    const fullLog = `[${timestamp}] ERROR: ${formattedMsg}`;
+    
+    console.error(fullLog);
+    this.logListeners.forEach(l => l(fullLog));
+  }
+  // -----------------------------
+
   private init() {
     if (window.Pi) {
       try {
-        // logs show "SDKMessaging instantiated on Pi environment: production"
-        // attempt to use sandbox: true caused origin mismatch errors.
-        // Switching to sandbox: false for production environment.
         window.Pi.init({ version: '2.0', sandbox: false });
         this.isInitialized = true;
-        console.log("Pi SDK initialized successfully");
+        this.log("Pi SDK initialized successfully");
       } catch (e) {
-        console.error("Pi SDK init failed:", e);
+        this.error("Pi SDK init failed", e);
       }
     } else {
-      console.warn("Pi SDK not found. Running in mock mode.");
+      this.log("Pi SDK not found. Running in mock mode.");
     }
   }
 
-  // Handle incomplete payments found during authentication
   private onIncompletePaymentFound(payment: any) {
-    console.log('Incomplete payment found', payment);
-    // Send to backend to resolve
+    this.log('Incomplete payment found', payment);
+    this.log(`Attempting to resolve incomplete payment: ${payment.identifier}`);
+    
     fetch('/payments/complete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         paymentId: payment.identifier,
         txid: payment.transaction ? payment.transaction.txid : '',
-        debug: 'cancel' // Tutorial example suggests cancelling stuck payments initially
+        debug: 'cancel'
       })
-    }).catch(err => console.error("Error handling incomplete payment:", err));
+    })
+    .then(res => res.json())
+    .then(data => this.log("Incomplete payment resolved response:", data))
+    .catch(err => this.error("Error handling incomplete payment", err));
   };
 
   public async authenticate(): Promise<PiUser> {
-    // Try to initialize again if not already initialized (handles race conditions where script loads late)
-    if (!this.isInitialized) {
-      this.init();
-    }
+    if (!this.isInitialized) this.init();
 
     if (this.isInitialized && window.Pi) {
       try {
+        this.log("Starting Authentication...");
         const scopes = ['username', 'payments'];
+        const authResult = await window.Pi.authenticate(scopes, this.onIncompletePaymentFound.bind(this));
         
-        // Add timeout to prevent hanging forever
-        const authPromise = window.Pi.authenticate(scopes, this.onIncompletePaymentFound.bind(this));
-        
-        // 15 second timeout
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error("Pi Authentication timed out. Check your network or Pi Browser.")), 15000)
-        );
-
-        const authResult: any = await Promise.race([authPromise, timeoutPromise]);
+        this.log("Authentication Successful!", { username: authResult.user.username });
         
         return {
           uid: authResult.user.uid,
@@ -91,14 +107,14 @@ class PiNetworkService {
           accessToken: authResult.accessToken
         };
       } catch (e: unknown) {
-        console.error("Pi Auth failed", e);
+        this.error("Pi Auth failed", e);
         throw e;
       }
     } else {
-      // Mock Login
-      console.log("Using Mock Login (Pi SDK not active)");
+      this.log("Simulating Mock Login...");
       return new Promise((resolve) => {
         setTimeout(() => {
+          this.log("Mock Login Complete");
           resolve({
             uid: 'mock-pi-uid-' + Math.floor(Math.random() * 1000),
             username: 'PiPioneer_Test',
@@ -110,38 +126,58 @@ class PiNetworkService {
   }
 
   public async createPayment(paymentData: PiPaymentDTO): Promise<unknown> {
-    if (window.Pi) {
+    this.log("Initiating Payment...", paymentData);
+
+    if (this.isInitialized && window.Pi) {
       return window.Pi.createPayment({
         amount: paymentData.amount,
         memo: paymentData.memo,
         metadata: paymentData.metadata,
       }, {
         onReadyForServerApproval: (paymentId: string) => { 
-            console.log('Ready for approval:', paymentId);
-            // Send paymentId to backend for approval
+            this.log(`[Callback] onReadyForServerApproval: ${paymentId}`);
+            this.log(`Sending approval request to backend: /payments/approve`);
+            
             fetch('/payments/approve', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ paymentId })
-            }).catch(err => console.error("Error sending for approval:", err));
+            })
+            .then(async (res) => {
+                const data = await res.json();
+                this.log(`Backend Approval Response: ${res.status}`, data);
+                if (!res.ok) throw new Error(data.error || 'Approval failed');
+            })
+            .catch(err => this.error("Error sending for approval", err));
         },
         onReadyForServerCompletion: (paymentId: string, txid: string) => {
-            console.log('Ready for completion:', paymentId, txid);
-            // Send paymentId and txid to backend for completion verification
+            this.log(`[Callback] onReadyForServerCompletion: ${paymentId}, TXID: ${txid}`);
+            this.log(`Sending completion request to backend: /payments/complete`);
+
             fetch('/payments/complete', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ paymentId, txid })
-            }).catch(err => console.error("Error sending for completion:", err));
+            })
+            .then(async (res) => {
+                const data = await res.json();
+                this.log(`Backend Completion Response: ${res.status}`, data);
+                if (!res.ok) throw new Error(data.error || 'Completion failed');
+            })
+            .catch(err => this.error("Error sending for completion", err));
         },
-        onCancel: (paymentId: string) => { console.log('Cancelled:', paymentId); },
-        onError: (error: unknown, payment: unknown) => { console.error('Payment Error:', error, payment); },
+        onCancel: (paymentId: string) => { 
+            this.log(`[Callback] Payment Cancelled by User: ${paymentId}`); 
+        },
+        onError: (error: unknown, payment: unknown) => { 
+            this.error(`[Callback] Payment Error`, { error, payment }); 
+        },
       });
     } else {
-      // Mock Payment
       return new Promise((resolve) => {
-        console.log("Processing Mock Payment...", paymentData);
+        this.log("Processing Mock Payment...");
         setTimeout(() => {
+          this.log("Mock Payment Successful");
           alert(`Mock Payment of ${paymentData.amount} Pi successful!`);
           resolve({ id: 'mock-payment-id', status: 'COMPLETED' });
         }, 1500);
