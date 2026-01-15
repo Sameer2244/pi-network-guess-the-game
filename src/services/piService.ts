@@ -110,7 +110,7 @@ class PiNetworkService {
   }
 
   public async createPayment(paymentData: PiPaymentDTO): Promise<unknown> {
-    if (this.isInitialized && window.Pi) {
+    if (window.Pi) {
       return window.Pi.createPayment({
         amount: paymentData.amount,
         memo: paymentData.memo,
