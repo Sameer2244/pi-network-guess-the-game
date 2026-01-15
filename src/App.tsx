@@ -17,6 +17,7 @@ const App: React.FC = () => {
   const [user, setUser] = useState<PiUser | null>(null);
   const [phase, setPhase] = useState<GamePhase>(GamePhase.LOBBY);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [coins, setCoins] = useState(0); // Mock Economy
 
   // Game State
@@ -36,8 +37,9 @@ const App: React.FC = () => {
         const userData = await piService.authenticate();
         setUser(userData);
         socketService.connect(userData.accessToken || 'mock');
-      } catch (err) {
+      } catch (err: any) {
         console.error("Auth Error", err);
+        setError(err.message || "Authentication Failed");
       } finally {
         setLoading(false);
       }
@@ -102,6 +104,21 @@ const App: React.FC = () => {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-gray-900 text-purple-400 text-xl font-bold">
         <div className="animate-pulse">Connecting to Pi Network...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-gray-900 text-white p-6 text-center">
+        <h2 className="text-xl text-red-500 font-bold mb-2">Connection Error</h2>
+        <p className="mb-4">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 bg-purple-600 rounded hover:bg-purple-500 transition-colors"
+        >
+          Retry
+        </button>
       </div>
     );
   }

@@ -35,8 +35,13 @@ class PiNetworkService {
 
   private init() {
     if (window.Pi) {
-      window.Pi.init({ version: '2.0', sandbox: true });
-      this.isInitialized = true;
+      try {
+        window.Pi.init({ version: '2.0', sandbox: true });
+        this.isInitialized = true;
+        console.log("Pi SDK initialized successfully");
+      } catch (e) {
+        console.error("Pi SDK init failed:", e);
+      }
     } else {
       console.warn("Pi SDK not found. Running in mock mode.");
     }
@@ -45,8 +50,7 @@ class PiNetworkService {
   // Handle incomplete payments found during authentication
   private onIncompletePaymentFound(payment: any) {
     console.log('Incomplete payment found', payment);
-    // Send to backend to resolve (e.g., cancel or complete)
-    // Using '/payments/complete' as per tutorial, but could be 'cancel' based on logic
+    // Send to backend to resolve
     fetch('/payments/complete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -59,10 +63,24 @@ class PiNetworkService {
   };
 
   public async authenticate(): Promise<PiUser> {
+    // Try to initialize again if not already initialized (handles race conditions where script loads late)
+    if (!this.isInitialized) {
+      this.init();
+    }
+
     if (this.isInitialized && window.Pi) {
       try {
         const scopes = ['username', 'payments'];
-        const authResult = await window.Pi.authenticate(scopes, this.onIncompletePaymentFound.bind(this));
+        
+        // Add timeout to prevent hanging forever
+        const authPromise = window.Pi.authenticate(scopes, this.onIncompletePaymentFound.bind(this));
+        
+        // 15 second timeout
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("Pi Authentication timed out. Check your network or Pi Browser.")), 15000)
+        );
+
+        const authResult: any = await Promise.race([authPromise, timeoutPromise]);
         
         return {
           uid: authResult.user.uid,
@@ -75,6 +93,7 @@ class PiNetworkService {
       }
     } else {
       // Mock Login
+      console.log("Using Mock Login (Pi SDK not active)");
       return new Promise((resolve) => {
         setTimeout(() => {
           resolve({
