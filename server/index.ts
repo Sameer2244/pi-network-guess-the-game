@@ -1,4 +1,5 @@
 import express from 'express';
+import axios from 'axios';
 import { createServer } from 'http';
 import { Server, Socket } from 'socket.io';
 import cors from 'cors';
@@ -7,6 +8,51 @@ import { Room, Player, GamePhase, DrawEvent, ChatMessage } from './types';
 
 const app = express();
 app.use(cors());
+app.use(express.json());
+
+const PI_API_KEY = "ggsgj47jhzjrrdpweal667p9fnpmelugfqlqsjpzmyroc1zwieufoi4nyz5w5r17"; // TODO: Get from Pi Developer Portal
+const PI_API_URL = "https://api.minepi.com/v2";
+
+// --- Payment Routes ---
+
+// Approve Payment
+app.post('/payments/approve', async (req, res) => {
+    const { paymentId } = req.body;
+    if (!paymentId) return res.status(400).json({ error: "Missing paymentId" });
+
+    try {
+        const response = await axios.post(
+            `${PI_API_URL}/payments/${paymentId}/approve`,
+            {},
+            { headers: { Authorization: `Key ${PI_API_KEY}` } }
+        );
+        res.json(response.data);
+    } catch (error: any) {
+        console.error("Approval Error:", error.response?.data || error.message);
+        res.status(500).json({ error: "Approval failed" });
+    }
+});
+
+// Complete Payment
+app.post('/payments/complete', async (req, res) => {
+    const { paymentId, txid } = req.body;
+    
+    if (!paymentId || !txid) {
+        return res.status(400).json({ error: "Missing paymentId or txid" });
+    }
+
+    try {
+        const response = await axios.post(
+            `${PI_API_URL}/payments/${paymentId}/complete`,
+            { txid },
+            { headers: { Authorization: `Key ${PI_API_KEY}` } }
+        );
+        res.json(response.data);
+    } catch (error: any) {
+        console.error("Completion Error:", error.response?.data || error.message);
+        res.status(500).json({ error: "Completion failed" });
+    }
+});
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
@@ -263,7 +309,7 @@ function startGame(room: Room) {
     room.gameState.currentDrawer = drawer.id;
 
     // Pick random word
-    const words = ["Apple", "Banana", "Car", "House", "Sun", "Tree"];
+    const words = ["Apple", "Banana", "Car", "House", "Sun", "Tree", "Cat", "Dog", "Mouse", "Mouse"];
     room.gameState.currentWord = words[Math.floor(Math.random() * words.length)];
 
     broadcastRoomState(room.id);
