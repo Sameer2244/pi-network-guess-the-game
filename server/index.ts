@@ -18,6 +18,7 @@ const PI_API_URL = "https://api.minepi.com/v2";
 // Approve Payment
 app.post('/payments/approve', async (req, res) => {
     const { paymentId } = req.body;
+    console.log(`[Payment] Approving payment: ${paymentId}`);
     if (!paymentId) return res.status(400).json({ error: "Missing paymentId" });
 
     try {
@@ -26,6 +27,7 @@ app.post('/payments/approve', async (req, res) => {
             {},
             { headers: { Authorization: `Key ${PI_API_KEY}` } }
         );
+        console.log(`[Payment] Approved successfully: ${paymentId}`, response.data);
         res.json(response.data);
     } catch (error: any) {
         console.error("Approval Error:", error.response?.data || error.message);
@@ -36,6 +38,7 @@ app.post('/payments/approve', async (req, res) => {
 // Complete Payment
 app.post('/payments/complete', async (req, res) => {
     const { paymentId, txid } = req.body;
+    console.log(`[Payment] Completing payment: ${paymentId}, txid: ${txid}`);
     
     if (!paymentId || !txid) {
         return res.status(400).json({ error: "Missing paymentId or txid" });
@@ -47,6 +50,7 @@ app.post('/payments/complete', async (req, res) => {
             { txid },
             { headers: { Authorization: `Key ${PI_API_KEY}` } }
         );
+        console.log(`[Payment] Completed successfully: ${paymentId}`, response.data);
         res.json(response.data);
     } catch (error: any) {
         console.error("Completion Error:", error.response?.data || error.message);
