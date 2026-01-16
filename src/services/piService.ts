@@ -127,54 +127,68 @@ class PiNetworkService {
     }
   }
 
-  public async createPayment(paymentData: PiPaymentDTO): Promise<unknown> {
+  public createPayment(paymentData: PiPaymentDTO): Promise<unknown> {
     this.log("Initiating Payment...", paymentData);
 
     if (this.isInitialized && window.Pi) {
-      return window.Pi.createPayment({
-        amount: paymentData.amount,
-        memo: paymentData.memo,
-        metadata: paymentData.metadata,
-      }, {
-        onReadyForServerApproval: (paymentId: string) => { 
-            this.log(`[Callback] onReadyForServerApproval: ${paymentId}`);
-            this.log(`Sending approval request to backend: /payments/approve`);
-            
+      return new Promise((resolve, reject) => {
+          window.Pi.createPayment({
+            amount: paymentData.amount,
+            memo: paymentData.memo,
+            metadata: paymentData.metadata,
+          }, {
+            onReadyForServerApproval: (paymentId: string) => { 
+                this.log(`[Callback] onReadyForServerApproval: ${paymentId}`);
+                this.log(`Sending approval request to backend: /payments/approve`);
+                
+                fetch(`${SERVER_URL}/payments/approve`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ paymentId })
+                })
+                .then(async (res) => {
+                    const data = await res.json();
+                    this.log(`Backend Approval Response: ${res.status}`, data);
+                    if (!res.ok) throw new Error(data.error || 'Approval failed');
+                })
+                .catch(err => {
+                    this.error("Error sending for approval", err);
+                    reject(err);
+                });
+            },
+            onReadyForServerCompletion: (paymentId: string, txid: string) => {
+                this.log(`[Callback] onReadyForServerCompletion: ${paymentId}, TXID: ${txid}`);
+                this.log(`Sending completion request to backend: /payments/complete`);
 
-            fetch(`${SERVER_URL}/payments/approve`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ paymentId })
-            })
-            .then(async (res) => {
-                const data = await res.json();
-                this.log(`Backend Approval Response: ${res.status}`, data);
-                if (!res.ok) throw new Error(data.error || 'Approval failed');
-            })
-            .catch(err => this.error("Error sending for approval", err));
-        },
-        onReadyForServerCompletion: (paymentId: string, txid: string) => {
-            this.log(`[Callback] onReadyForServerCompletion: ${paymentId}, TXID: ${txid}`);
-            this.log(`Sending completion request to backend: /payments/complete`);
-
-            fetch(`${SERVER_URL}/payments/complete`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ paymentId, txid })
-            })
-            .then(async (res) => {
-                const data = await res.json();
-                this.log(`Backend Completion Response: ${res.status}`, data);
-                if (!res.ok) throw new Error(data.error || 'Completion failed');
-            })
-            .catch(err => this.error("Error sending for completion", err));
-        },
-        onCancel: (paymentId: string) => { 
-            this.log(`[Callback] Payment Cancelled by User: ${paymentId}`); 
-        },
-        onError: (error: unknown, payment: unknown) => { 
-            this.error(`[Callback] Payment Error`, { error, payment }); 
-        },
+                fetch(`${SERVER_URL}/payments/complete`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ paymentId, txid })
+                })
+                .then(async (res) => {
+                    const data = await res.json();
+                    this.log(`Backend Completion Response: ${res.status}`, data);
+                    if (!res.ok) {
+                        throw new Error(data.error || 'Completion failed');
+                    } else {
+                        // SUCCESS!
+                        resolve({ paymentId, txid });
+                    }
+                })
+                .catch(err => {
+                    this.error("Error sending for completion", err);
+                    reject(err);
+                });
+            },
+            onCancel: (paymentId: string) => { 
+                this.log(`[Callback] Payment Cancelled by User: ${paymentId}`);
+                reject(new Error("User cancelled payment"));
+            },
+            onError: (error: unknown, payment: unknown) => { 
+                this.error(`[Callback] Payment Error`, { error, payment }); 
+                reject(error);
+            },
+          });
       });
     } else {
       return new Promise((resolve) => {
