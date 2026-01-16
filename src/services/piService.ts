@@ -26,6 +26,8 @@ declare global {
   }
 }
 
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
+
 class PiNetworkService {
   private isInitialized = false;
   private logListeners: ((msg: string) => void)[] = [];
@@ -76,7 +78,7 @@ class PiNetworkService {
     this.log('Incomplete payment found', payment);
     this.log(`Attempting to resolve incomplete payment: ${payment.identifier}`);
     
-    fetch('/payments/complete', {
+    fetch(`${SERVER_URL}/payments/complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -138,7 +140,8 @@ class PiNetworkService {
             this.log(`[Callback] onReadyForServerApproval: ${paymentId}`);
             this.log(`Sending approval request to backend: /payments/approve`);
             
-            fetch('/payments/approve', {
+
+            fetch(`${SERVER_URL}/payments/approve`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ paymentId })
@@ -154,7 +157,7 @@ class PiNetworkService {
             this.log(`[Callback] onReadyForServerCompletion: ${paymentId}, TXID: ${txid}`);
             this.log(`Sending completion request to backend: /payments/complete`);
 
-            fetch('/payments/complete', {
+            fetch(`${SERVER_URL}/payments/complete`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ paymentId, txid })
