@@ -21,7 +21,8 @@ export const GamePhase = {
 export type GamePhase = (typeof GamePhase)[keyof typeof GamePhase];
 
 export interface Player {
-  id: string; // Socket ID or User ID
+  id: string; // Socket ID
+  uid: string; // Pi User ID
   username: string;
   score: number;
   avatarUrl?: string;

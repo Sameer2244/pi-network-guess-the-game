@@ -4,13 +4,23 @@ import { createServer } from 'http';
 import { Server, Socket } from 'socket.io';
 import cors from 'cors';
 import { v4 as uuidv4 } from 'uuid';
+import dotenv from 'dotenv';
+import mongoose from 'mongoose';
 import { Room, Player, GamePhase, DrawEvent, ChatMessage } from './types';
+import { User } from './models/User';
+
+dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const PI_API_KEY = "ggsgj47jhzjrrdpweal667p9fnpmelugfqlqsjpzmyroc1zwieufoi4nyz5w5r17"; // TODO: Get from Pi Developer Portal
+// Database Connection
+mongoose.connect(process.env.MONGO_URI || '')
+.then(() => console.log('MongoDB Connected'))
+.catch(err => console.error('MongoDB Connection Error:', err));
+
+const PI_API_KEY = process.env.PI_API_KEY || "mock-key"; 
 const PI_API_URL = "https://api.minepi.com/v2";
 
 // --- Payment Routes ---
@@ -50,8 +60,34 @@ app.post('/payments/complete', async (req, res) => {
             { txid },
             { headers: { Authorization: `Key ${PI_API_KEY}` } }
         );
-        console.log(`[Payment] Completed successfully: ${paymentId}`, response.data);
-        res.json(response.data);
+        const payment = response.data;
+        console.log(`[Payment] Completed successfully: ${paymentId}`, payment);
+
+        // Update User Coins
+        const userUid = payment.user_uid;
+        // metadata might be string or object depending on SDK version, usually object in V2
+        // Safely parse if needed or access directly. SDK sends object.
+        const coinsToAdd = (payment.metadata && payment.metadata.quantity) ? parseInt(payment.metadata.quantity) : 100;
+        
+        let updatedUser;
+        if (userUid) {
+            updatedUser = await User.findOneAndUpdate(
+                { uid: userUid }, 
+                { $inc: { coins: coinsToAdd } },
+                { new: true }
+            );
+            console.log(`[Payment] Credited ${coinsToAdd} coins to ${userUid}`);
+
+            // Notify Socket
+            for (const [socketId, player] of players.entries()) {
+                if (player.uid === userUid) {
+                    io.to(socketId).emit('profile_update', { coins: updatedUser?.coins, xp: updatedUser?.xp });
+                    break;
+                }
+            }
+        }
+
+        res.json(payment);
     } catch (error: any) {
         console.error("Completion Error:", error.response?.data || error.message);
         res.status(500).json({ error: "Completion failed" });
@@ -105,19 +141,37 @@ io.on('connection', (socket: Socket) => {
   console.log('Client connected:', socket.id);
 
   // 1. Identify User
-  socket.on('login', (userData: { username: string; uid: string }) => {
+  socket.on('login', async (userData: { username: string; uid: string }) => {
     console.log(`User Logged in: ${userData.username} (${socket.id})`);
     
+    let dbUser = await User.findOne({ uid: userData.uid });
+    if (!dbUser) {
+        dbUser = await User.create({
+            uid: userData.uid,
+            username: userData.username,
+            coins: 100, // Starting bonus
+            xp: 0
+        });
+    } else {
+        // Update username if changed
+        if (dbUser.username !== userData.username) {
+            dbUser.username = userData.username;
+            await dbUser.save();
+        }
+    }
+
     const newPlayer: Player = {
         id: socket.id,
+        uid: userData.uid,
         username: userData.username,
         score: 0,
         isDrawer: false
     };
     players.set(socket.id, newPlayer);
     
-    // Send immediate room list
+    // Send immediate room list & updated profile
     socket.emit('rooms_update', getRoomsList());
+    socket.emit('profile_update', { coins: dbUser.coins, xp: dbUser.xp });
   });
 
   // 2. Create Room

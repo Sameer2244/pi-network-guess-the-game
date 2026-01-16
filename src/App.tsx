@@ -105,11 +105,16 @@ const App: React.FC = () => {
       setTimer(t);
     });
 
+    socketService.on('profile_update', (data: { coins: number, xp?: number }) => {
+      if (data.coins !== undefined) setCoins(data.coins);
+    });
+
     // Cleanup listeners
     return () => {
       socketService.off('rooms_update', () => { });
       socketService.off('room_state', () => { });
       socketService.off('timer_update', () => { });
+      socketService.off('profile_update', () => { });
     };
   }, [user]);
 
@@ -132,7 +137,7 @@ const App: React.FC = () => {
         memo: "100 Game Coins",
         metadata: { type: 'coins', quantity: 100 }
       });
-      setCoins(prev => prev + 100);
+      // Coins update via socket event 'profile_update'
     } catch (e) {
       console.error("Payment failed", e);
     }
