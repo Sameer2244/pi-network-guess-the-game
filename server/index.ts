@@ -168,18 +168,30 @@ const rooms: Map<string, Room> = new Map();
 const players: Map<string, Player> = new Map();
 
 // --- Helper Functions ---
-function getRoomsList() {
-    return Array.from(rooms.values()).map(r => ({
+function getRoomsList(filter: string = "", limit: number = 20) {
+    let allRooms = Array.from(rooms.values());
+    
+    if (filter) {
+        const lowerFilter = filter.toLowerCase();
+        allRooms = allRooms.filter(r => r.name.toLowerCase().includes(lowerFilter));
+    }
+    
+    // Sort by player count (descending) or creation time could be better, 
+    // but for now let's just take top N.
+    // Maybe sort by 'has space' first?
+    // allRooms.sort((a, b) => b.players.length - a.players.length);
+
+    return allRooms.slice(0, limit).map(r => ({
         id: r.id,
         name: r.name,
         maxPlayers: r.maxPlayers,
-        currentPlayers: r.players.length // For client display
+        currentPlayers: r.players.length 
     }));
 }
 
-function broadcastRoomsUpdate() {
-    io.emit('rooms_update', getRoomsList());
-}
+// function broadcastRoomsUpdate() {
+//     io.emit('rooms_update', getRoomsList());
+// }
 
 // --- Socket Connection ---
 io.on('connection', (socket: Socket) => {
@@ -215,8 +227,8 @@ io.on('connection', (socket: Socket) => {
     };
     players.set(socket.id, newPlayer);
     
-    // Send immediate room list & updated profile
-    socket.emit('rooms_update', getRoomsList());
+    // Send immediate room list (limited) & updated profile
+    socket.emit('rooms_update', getRoomsList("", 20));
     socket.emit('profile_update', { coins: dbUser.coins, xp: dbUser.xp });
   });
 
@@ -254,9 +266,11 @@ io.on('connection', (socket: Socket) => {
     console.log(`Room Created: ${newRoom.name} (${roomId}) by ${player.username}`);
 
     // Broadcast updates
-    broadcastRoomsUpdate();
+    // Broadcast updates
+    // broadcastRoomsUpdate(); // No longer broadcasting to everyone
     gameService.broadcastRoomState(newRoom);
   });
+
 
   // 3. Join Room
   socket.on('join_room', (roomId: string) => {
@@ -380,6 +394,13 @@ io.on('connection', (socket: Socket) => {
       console.log(`[Hint] ${player.username} bought a hint. Revealed: ${room.gameState.revealedWord}`);
   });
 
+  // 9. Get Rooms (Pagination/Filter)
+  socket.on('get_rooms', (params: { query?: string, limit?: number }) => {
+      const { query = "", limit = 20 } = params;
+      const roomsList = getRoomsList(query, limit);
+      socket.emit('rooms_update', roomsList);
+  });
+
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
     leaveRoom(socket);
@@ -406,7 +427,7 @@ function joinRoom(socket: Socket, roomId: string) {
 
         // Notify room
         gameService.broadcastRoomState(room);
-        broadcastRoomsUpdate(); // Update player counts for lobby
+        // broadcastRoomsUpdate(); // Update player counts for lobby
     }
 }
 
@@ -447,7 +468,7 @@ function leaveRoom(socket: Socket) {
              // Broadcast update if neither of above (e.g. guesser left)
              gameService.broadcastRoomState(room);
         }
-        broadcastRoomsUpdate();
+        // broadcastRoomsUpdate();
     }
 }
 

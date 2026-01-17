@@ -20,6 +20,7 @@ const App: React.FC = () => {
   const [coins, setCoins] = useState(0); // Mock Economy
 
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Game State
   const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
@@ -70,6 +71,20 @@ const App: React.FC = () => {
     init();
   }, []);
 
+  // Poll for rooms in Lobby
+  useEffect(() => {
+    if (currentRoom || !user) return; // Don't poll if in game or not logged in
+
+    const fetchRooms = () => {
+      socketService.emit('get_rooms', { query: searchQuery, limit: 20 });
+    };
+
+    fetchRooms(); // Initial fetch
+    const interval = setInterval(fetchRooms, 5000); // Poll every 5s
+
+    return () => clearInterval(interval);
+  }, [currentRoom, user, searchQuery]);
+
   // Socket Listeners
   useEffect(() => {
     if (!user) return;
@@ -77,8 +92,6 @@ const App: React.FC = () => {
     socketService.on('rooms_update', (roomsData: Room[]) => {
       setRooms(roomsData);
     });
-
-
 
     socketService.on('room_state', (data: any) => {
       // data: { id, players, gameState }
@@ -160,6 +173,10 @@ const App: React.FC = () => {
 
   const handleJoinRoom = (roomId: string) => {
     socketService.emit('join_room', roomId);
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
   };
 
   const handleStartGame = () => {
@@ -334,6 +351,7 @@ const App: React.FC = () => {
                 rooms={rooms}
                 onCreateRoom={handleCreateRoom}
                 onJoinRoom={handleJoinRoom}
+                onSearch={handleSearch}
               />
             </div>
             <footer className="p-4 text-center text-xs text-gray-500 space-x-4 border-t border-gray-800 bg-gray-900">
@@ -377,68 +395,70 @@ const App: React.FC = () => {
 
         {currentRoom && phase === GamePhase.PLAYING && (
           <div className="flex h-full flex-col">
-            {/* Top Game Info Bar */}
-            <div className="bg-gray-800 border-b border-gray-700 px-4 py-2 flex items-center justify-between shrink-0">
-              {/* Left: Round Info */}
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2 bg-gray-700/50 rounded-lg px-3 py-1">
-                  <span className="text-xs text-gray-400 uppercase">Round</span>
-                  <span className="font-mono font-bold text-purple-400">
+            {/* Top Game Info Bar - Compact */}
+            <div className="bg-gray-800 border-b border-gray-700 px-2 sm:px-4 py-1.5 flex items-center justify-between shrink-0 gap-2">
+              {/* Left: Round & Leave */}
+              <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1 bg-gray-700/50 rounded px-2 py-1">
+                  <span className="text-[10px] text-gray-400 uppercase hidden sm:inline">Round</span>
+                  <span className="font-mono text-sm font-bold text-purple-400">
                     {roundInfo.current}/{roundInfo.total}
                   </span>
                 </div>
                 <button
                   onClick={handleLeaveRoom}
-                  className="text-xs text-red-400 hover:text-red-300 transition-colors px-2 py-1 border border-red-400/30 rounded hover:bg-red-400/10"
+                  className="text-[10px] text-red-400 hover:text-red-300 px-1.5 py-0.5 border border-red-400/30 rounded hover:bg-red-400/10"
                 >
-                  Leave
+                  ✕
                 </button>
               </div>
 
               {/* Center: Word Display */}
-              <div className="flex-1 flex justify-center">
+              <div className="flex-1 flex justify-center min-w-0 overflow-hidden">
                 {isDrawer && word && (
-                  <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-2 rounded-full shadow-lg">
-                    <span className="text-xs text-purple-200 uppercase mr-2">Draw:</span>
-                    <span className="font-bold text-lg text-white">{word}</span>
+                  <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1 rounded-full shadow-lg truncate">
+                    <span className="text-[10px] text-purple-200 uppercase mr-1">Draw:</span>
+                    <span className="font-bold text-sm text-white">{word}</span>
                   </div>
                 )}
                 {!isDrawer && (
-                  <div className="flex items-center gap-3">
-                    <div className="bg-gray-700 px-6 py-2 rounded-full border border-gray-600">
-                      <span className="font-bold tracking-[0.3em] text-xl font-mono text-white">
-                        {revealedWord || "_ _ _ _ _"}
-                      </span>
-                    </div>
-                    <button
-                      onClick={handleBuyHint}
-                      className="flex items-center gap-1 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-black font-bold text-xs px-3 py-2 rounded-full transition-all shadow-lg hover:shadow-yellow-500/30"
-                      title="Reveal a letter (10 coins)"
-                    >
-                      <span>💡</span>
-                      <span>Hint</span>
-                      <span className="bg-black/20 px-1.5 py-0.5 rounded text-[10px]">10¢</span>
-                    </button>
+                  <div className="bg-gray-700 px-3 py-1 rounded-full border border-gray-600 truncate">
+                    <span className="font-bold tracking-widest text-sm sm:text-base font-mono text-white">
+                      {revealedWord || "_ _ _ _"}
+                    </span>
                   </div>
                 )}
               </div>
 
-              {/* Right: Timer */}
-              <div className={`flex items-center gap-2 px-4 py-2 rounded-full ${timer < 10 ? 'bg-red-600 animate-pulse' : 'bg-gray-700'}`}>
-                <span className="text-2xl">⏱️</span>
-                <span className={`text-2xl font-mono font-bold ${timer < 10 ? 'text-white' : 'text-green-400'}`}>
-                  {timer}s
-                </span>
+              {/* Right: Timer & Hint */}
+              <div className="flex items-center gap-2 shrink-0">
+                {!isDrawer && (
+                  <button
+                    onClick={handleBuyHint}
+                    className="flex items-center gap-1 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-black font-bold text-[10px] px-2 py-1 rounded-full transition-all shadow-md"
+                    title="Reveal a letter (10 coins)"
+                  >
+                    <span>💡</span>
+                    <span className="hidden sm:inline">Hint</span>
+                    <span className="bg-black/20 px-1 rounded text-[9px]">10¢</span>
+                  </button>
+                )}
+                <div className={`flex items-center gap-1 px-2 py-1 rounded-full ${timer < 10 ? 'bg-red-600 animate-pulse' : 'bg-gray-700'}`}>
+                  <span className="text-base">⏱️</span>
+                  <span className={`text-base font-mono font-bold ${timer < 10 ? 'text-white' : 'text-green-400'}`}>
+                    {timer}
+                  </span>
+                </div>
               </div>
             </div>
 
             {/* Main Content Area */}
-            <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+            <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
               {/* Canvas Area */}
-              <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="flex-1 flex flex-col overflow-hidden min-h-0">
                 {/* Canvas */}
-                <div className="flex-1 bg-gradient-to-br from-gray-100 to-gray-300 relative flex items-center justify-center overflow-hidden p-2 md:p-4">
-                  <div className="aspect-square w-full max-w-[600px] max-h-full shadow-2xl rounded-lg overflow-hidden">
+                <div className="flex-1 bg-gradient-to-br from-gray-200 to-gray-400 relative flex items-center justify-center overflow-hidden p-1 sm:p-2 min-h-0">
+                  <div className="w-full h-full max-w-[500px] max-h-[500px] shadow-2xl rounded-lg overflow-hidden bg-white aspect-square">
                     <CanvasBoard
                       isDrawer={isDrawer}
                       currentColor={color}
@@ -448,62 +468,57 @@ const App: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Bottom Toolbar (Drawer Only) */}
+                {/* Bottom Toolbar (Drawer Only) - Compact */}
                 {isDrawer && (
-                  <div className="bg-gray-800 border-t border-gray-700 px-4 py-3 flex items-center justify-center gap-4 shrink-0">
+                  <div className="bg-gray-800 border-t border-gray-700 px-2 py-2 flex items-center justify-center gap-2 sm:gap-3 shrink-0 flex-wrap">
                     {/* Color Picker */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-400 uppercase hidden sm:inline">Color</span>
-                      <input
-                        type="color"
-                        value={color}
-                        onChange={(e) => setColor(e.target.value)}
-                        className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-600 hover:border-purple-400 transition-colors"
-                      />
-                      {/* Quick Colors */}
-                      <div className="flex gap-1">
-                        {['#000000', '#ffffff', '#ef4444', '#22c55e', '#3b82f6', '#eab308'].map(c => (
-                          <button
-                            key={c}
-                            onClick={() => setColor(c)}
-                            className={`w-7 h-7 rounded-full border-2 transition-transform hover:scale-110 ${color === c ? 'border-purple-400 ring-2 ring-purple-400' : 'border-gray-600'}`}
-                            style={{ backgroundColor: c }}
-                          />
-                        ))}
-                      </div>
+                    <input
+                      type="color"
+                      value={color}
+                      onChange={(e) => setColor(e.target.value)}
+                      className="w-8 h-8 rounded cursor-pointer border-2 border-gray-600 hover:border-purple-400 transition-colors shrink-0"
+                    />
+                    {/* Quick Colors - Compact */}
+                    <div className="flex gap-1">
+                      {['#000000', '#ffffff', '#ef4444', '#22c55e', '#3b82f6', '#eab308', '#a855f7', '#f97316'].map(c => (
+                        <button
+                          key={c}
+                          onClick={() => setColor(c)}
+                          className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${color === c ? 'border-purple-400 ring-1 ring-purple-400' : 'border-gray-600'}`}
+                          style={{ backgroundColor: c }}
+                        />
+                      ))}
                     </div>
 
                     {/* Divider */}
-                    <div className="w-px h-8 bg-gray-600" />
+                    <div className="w-px h-6 bg-gray-600 hidden sm:block" />
 
-                    {/* Brush Sizes */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-400 uppercase hidden sm:inline">Size</span>
-                      <div className="flex gap-2 items-center">
-                        {[2, 5, 10, 20].map(size => (
-                          <button
-                            key={size}
-                            onClick={() => setLineWidth(size)}
-                            className={`rounded-full bg-white transition-all ${lineWidth === size ? 'ring-2 ring-purple-400' : 'hover:ring-2 hover:ring-gray-400'}`}
-                            style={{
-                              width: `${Math.min(size + 12, 32)}px`,
-                              height: `${Math.min(size + 12, 32)}px`
-                            }}
-                          />
-                        ))}
-                      </div>
+                    {/* Brush Sizes - Compact */}
+                    <div className="flex gap-1 items-center">
+                      {[2, 6, 12, 20].map(size => (
+                        <button
+                          key={size}
+                          onClick={() => setLineWidth(size)}
+                          className={`rounded-full bg-white transition-all flex items-center justify-center ${lineWidth === size ? 'ring-2 ring-purple-400' : 'hover:ring-1 hover:ring-gray-400'}`}
+                          style={{
+                            width: `${Math.min(size + 10, 28)}px`,
+                            height: `${Math.min(size + 10, 28)}px`
+                          }}
+                        >
+                          <div className="rounded-full bg-gray-800" style={{ width: `${Math.min(size, 16)}px`, height: `${Math.min(size, 16)}px` }} />
+                        </button>
+                      ))}
                     </div>
 
                     {/* Divider */}
-                    <div className="w-px h-8 bg-gray-600" />
+                    <div className="w-px h-6 bg-gray-600 hidden sm:block" />
 
-                    {/* Clear Button */}
+                    {/* Clear Button - Compact */}
                     <button
                       onClick={() => clearCanvasRef.current()}
-                      className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-bold rounded-lg transition-colors flex items-center gap-2"
+                      className="px-2 py-1.5 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded transition-colors flex items-center gap-1"
                     >
                       <span>🗑️</span>
-                      <span className="hidden sm:inline">Clear</span>
                     </button>
                   </div>
                 )}
