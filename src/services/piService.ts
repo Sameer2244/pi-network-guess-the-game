@@ -16,9 +16,9 @@ interface PiSDK {
     }
   ): Promise<unknown>;
   Ads?: {
-    showAd(adId: string): void;
-    isAdReady(adId: string): boolean;
-    requestAd(adId: string): void;
+    showAd(adId: string): Promise<{ result: string; adId: string }>;
+    isAdReady(adId: string): Promise<{ ready: boolean }>;
+    requestAd(adId: string): Promise<{ result: string }>;
   };
 }
 
@@ -38,57 +38,56 @@ class PiNetworkService {
     this.init();
   }
 
-  public showAd(adType: "rewarded" | "interstitial"): Promise<void> {
+  public async showAd(adType: "rewarded" | "interstitial"): Promise<string> {
     this.log(`Requesting Ad: ${adType}`);
     
-    if (this.isInitialized && window.Pi) {
-        return new Promise((resolve, reject) => {
-             try {
-                 const piAny = window.Pi as any;
-                 
-                 // Check if Ads object exists
-                 if (!piAny.Ads) {
-                    // Try to init it? Usually injected by browser.
-                    this.error("Pi.Ads object is missing. Are you in the Pi Browser?");
-                    reject(new Error("Pi Ads not supported"));
-                    return;
-                 }
-
-                 // Check if Ad is ready
-                 if (piAny.Ads.isAdReady && piAny.Ads.isAdReady(adType) === false) {
-                     this.log("Ad not ready. Requesting new ad...");
-                     if (piAny.Ads.requestAd) {
-                        piAny.Ads.requestAd(adType);
-                        // We can't wait for it easily in this flow without a callback.
-                        // Reject and ask user to try again.
-                        reject(new Error("Ad is loading. Please try again in a few seconds."));
-                     } else {
-                        reject(new Error("Ad not ready and requestAd not available."));
-                     }
-                     return;
-                 }
-
-                 if (piAny.Ads.showAd) {
-                     piAny.Ads.showAd(adType);
-                     // We simulate success after a delay since we lack the event callback spec
-                     setTimeout(() => resolve(), 3000); 
-                 } else {
-                     this.log("Pi Ads SDK showAd not found");
-                     reject(new Error("Pi Ads SDK incomplete"));
-                 }
-             } catch (e) {
-                 this.error("Ad Error", e);
-                 reject(e);
-             }
-        });
-    } else {
+    if (!this.isInitialized || !window.Pi) {
+        // Mock Flow
         return new Promise((resolve) => {
             this.log("Simulating Mock Ad (Desktop)...");
             setTimeout(() => {
                 this.log("Mock Ad Watched");
-                resolve();
-            }, 1500);
+                resolve("mock-ad-id-" + Date.now());
+            }, 1000);
         });
+    }
+
+    const Ads = window.Pi.Ads;
+    if (!Ads) {
+        throw new Error("Pi Ads SDK not available");
+    }
+
+    try {
+        // 1. Check if Ad is ready
+        const readyResponse = await Ads.isAdReady(adType);
+        
+        if (readyResponse.ready === false) {
+             this.log("Ad not ready, requesting new one...");
+             const requestResponse = await Ads.requestAd(adType);
+             
+             if (requestResponse.result !== "AD_LOADED") {
+                 throw new Error(`Ad failed to load: ${requestResponse.result}`);
+             }
+             this.log("Ad Loaded successfully");
+        }
+
+        // 2. Show the Ad
+        const showResponse = await Ads.showAd(adType);
+        
+        if (showResponse.result === "AD_REWARDED") {
+            return showResponse.adId;
+        } else if (showResponse.result === "AD_CLOSED") {
+             // Interstitial closed or Rewarded closed without finishing?
+             // Docs say: "AD_REWARDED" is for rewarded.
+             // If closed without reward, we shouldn't grant coins.
+             throw new Error("Ad closed without reward");
+        } else {
+            throw new Error(`Ad not fully watched: ${showResponse.result}`);
+        }
+
+    } catch (e: any) {
+        this.error("Ad Flow Error", e);
+        throw e;
     }
   }
 

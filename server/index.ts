@@ -96,21 +96,27 @@ app.post('/payments/complete', async (req, res) => {
 
 // Ad Reward Endpoint
 app.post('/ads/reward', async (req, res) => {
-    const { uid } = req.body;
-    console.log(`[Ad Reward] Request for user: ${uid}`);
+    const { uid, adId } = req.body;
+    console.log(`[Ad Reward] Request for user: ${uid}, AdId: ${adId}`);
 
-    if (!uid) {
-        return res.status(400).json({ error: "Missing uid" });
+    if (!uid || !adId) {
+        return res.status(400).json({ error: "Missing uid or adId" });
     }
 
     try {
-        // In a real app, verify the ad view here via server-side callback from Pi
-        // For now, we trust the client (MVP/Intranet)
+        // TODO: Server-Side Verification (Crucial for Security)
+        // 1. Send GET request to https://api.minepi.com/v2/ads/{adId}
+        //    Header: Authorization: Key <Your_Server_API_Key>
+        // 2. Check if response.data.mediator_ack_status === "granted"
+        // 3. Only then grant reward.
+        
+        // For MVP/Mock, we proceed directly.
+        
         // Award +5 Coins
         const rewardAmount = 5;
         
         const updatedUser = await User.findOneAndUpdate(
-            { uid: uid },
+            { uid: uid }, 
             { $inc: { coins: rewardAmount } },
             { new: true }
         );

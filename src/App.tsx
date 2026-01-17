@@ -162,24 +162,19 @@ const App: React.FC = () => {
 
   const handleWatchAd = async () => {
     try {
-      await piService.showAd("rewarded");
-      // If successful (no error thrown), request reward from backend
-      // We need a server endpoint for this.
-      // For now, let's use a temporary fetch or socket call? 
-      // Best to use a proper REST endpoint as per plan.
-      // Note: Backend endpoint /ads/reward is next step.
+      const adId = await piService.showAd("rewarded");
 
+      // Request reward from backend with adId for verification
       await fetch(`${import.meta.env.VITE_SERVER_URL || 'http://localhost:3001'}/ads/reward`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uid: user?.uid })
+        body: JSON.stringify({ uid: user?.uid, adId: adId })
       });
 
       // Refresh profile or wait for socket update
-      // Socket update should happen automatically if backend emits 'profile_update'
-    } catch (e) {
+    } catch (e: any) {
       console.error("Ad failed", e);
-      alert("Ad failed to load or was cancelled.");
+      alert(`Ad failed: ${e.message || "Unknown error"}`);
     }
   };
 
