@@ -17,6 +17,8 @@ interface PiSDK {
   ): Promise<unknown>;
   Ads?: {
     showAd(adId: string): void;
+    isAdReady(adId: string): boolean;
+    requestAd(adId: string): void;
   };
 }
 
@@ -41,19 +43,38 @@ class PiNetworkService {
     
     if (this.isInitialized && window.Pi) {
         return new Promise((resolve, reject) => {
-             // Mocking SDK Ad capability for now as specific syntax varies.
-             // We assume Pi.Ads.showAd exists or will be injected.
              try {
                  const piAny = window.Pi as any;
-                 if (piAny.Ads && piAny.Ads.showAd) {
+                 
+                 // Check if Ads object exists
+                 if (!piAny.Ads) {
+                    // Try to init it? Usually injected by browser.
+                    this.error("Pi.Ads object is missing. Are you in the Pi Browser?");
+                    reject(new Error("Pi Ads not supported"));
+                    return;
+                 }
+
+                 // Check if Ad is ready
+                 if (piAny.Ads.isAdReady && piAny.Ads.isAdReady(adType) === false) {
+                     this.log("Ad not ready. Requesting new ad...");
+                     if (piAny.Ads.requestAd) {
+                        piAny.Ads.requestAd(adType);
+                        // We can't wait for it easily in this flow without a callback.
+                        // Reject and ask user to try again.
+                        reject(new Error("Ad is loading. Please try again in a few seconds."));
+                     } else {
+                        reject(new Error("Ad not ready and requestAd not available."));
+                     }
+                     return;
+                 }
+
+                 if (piAny.Ads.showAd) {
                      piAny.Ads.showAd(adType);
                      // We simulate success after a delay since we lack the event callback spec
                      setTimeout(() => resolve(), 3000); 
                  } else {
-                     // Fallback or Sandbox mock
-                     this.log("Pi Ads SDK not found (Sandbox/Mock?)");
-                     // We resolve anyway for testing flow
-                     setTimeout(() => resolve(), 1000); 
+                     this.log("Pi Ads SDK showAd not found");
+                     reject(new Error("Pi Ads SDK incomplete"));
                  }
              } catch (e) {
                  this.error("Ad Error", e);
