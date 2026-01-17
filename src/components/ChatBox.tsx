@@ -5,9 +5,10 @@ import { socketService } from '../services/socketService';
 interface ChatBoxProps {
   playerId: string;
   username: string;
+  isDrawer?: boolean;
 }
 
-export const ChatBox: React.FC<ChatBoxProps> = () => {
+export const ChatBox: React.FC<ChatBoxProps> = ({ playerId, username, isDrawer }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -44,7 +45,7 @@ export const ChatBox: React.FC<ChatBoxProps> = () => {
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || isDrawer) return;
 
     socketService.emit('send_message', input);
     setInput('');
@@ -81,12 +82,14 @@ export const ChatBox: React.FC<ChatBoxProps> = () => {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Type guess here..."
-          className="flex-1 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-pi-purple"
+          placeholder={isDrawer ? "Drawing... (Chat Disabled)" : "Type guess here..."}
+          disabled={isDrawer}
+          className={`flex-1 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-pi-purple ${isDrawer ? 'opacity-50 cursor-not-allowed' : ''}`}
         />
         <button
           type="submit"
-          className="bg-purple-600 hover:bg-purple-500 text-white px-3 py-1 rounded text-sm font-semibold transition-colors"
+          disabled={isDrawer}
+          className={`bg-purple-600 hover:bg-purple-500 text-white px-3 py-1 rounded text-sm font-semibold transition-colors ${isDrawer ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           Send
         </button>

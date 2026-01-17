@@ -29,6 +29,7 @@ export interface GameState {
     revealedWord?: string;
     currentRound: number;
     totalRounds: number;
+    correctlyGuessedPlayerIds?: string[];
 }
 
 export interface Player {

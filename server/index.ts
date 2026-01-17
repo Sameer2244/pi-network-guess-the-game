@@ -421,19 +421,30 @@ function leaveRoom(socket: Socket) {
         room.players = room.players.filter(p => p.id !== socket.id);
         player.roomId = undefined;
         player.isDrawer = false;
+        
+        io.to(room.id).emit('system_message', `${player.username} left the game.`);
 
         if (room.players.length === 0) {
             if (room.timerInterval) clearInterval(room.timerInterval);
             rooms.delete(roomId);
             console.log(`Room Deleted (Empty): ${roomId}`);
         } else {
-             // Handle if drawer left
-             if (room.gameState.currentDrawer === player.id) {
-                 // End round or pick new drawer
-                 room.gameState.phase = GamePhase.ROUND_END;
-                 room.gameState.currentDrawer = undefined;
-                 if (room.timerInterval) clearInterval(room.timerInterval);
+             // Check min players first
+             if (room.players.length < 2 && room.gameState.phase !== GamePhase.LOBBY) {
+                  io.to(room.id).emit('system_message', `Not enough players! Ending game...`);
+                  gameService.endGame(room);
+                  return; 
              }
+
+             // Handle if drawer left (and we have enough players)
+             if (room.gameState.currentDrawer === player.id && room.gameState.phase === GamePhase.PLAYING) {
+                 io.to(room.id).emit('system_message', `${player.username} (Drawer) left! Ending round...`);
+                 // Use gameService to properly end round and schedule next
+                 gameService.endRound(room);
+                 return;
+             }
+             
+             // Broadcast update if neither of above (e.g. guesser left)
              gameService.broadcastRoomState(room);
         }
         broadcastRoomsUpdate();

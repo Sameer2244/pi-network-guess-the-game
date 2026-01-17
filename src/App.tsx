@@ -29,6 +29,7 @@ const App: React.FC = () => {
   const [revealedWord, setRevealedWord] = useState<string>("");
   const [roundInfo, setRoundInfo] = useState({ current: 0, total: 10 });
   const [rankings, setRankings] = useState<any[]>([]); // For Game Over
+  const [roundWinners, setRoundWinners] = useState<string[]>([]);
 
   // Debug State
   // const [showLogs, setShowLogs] = useState(false);
@@ -119,6 +120,15 @@ const App: React.FC = () => {
 
       if (gameState.timer !== undefined) {
         setTimer(gameState.timer);
+      }
+
+      if (gameState.correctlyGuessedPlayerIds && players) {
+        const winners = players
+          .filter((p: any) => gameState.correctlyGuessedPlayerIds.includes(p.id))
+          .map((p: any) => p.username);
+        setRoundWinners(winners);
+      } else {
+        setRoundWinners([]);
       }
     });
 
@@ -501,7 +511,7 @@ const App: React.FC = () => {
 
               {/* Chat Sidebar */}
               <div className="w-full md:w-80 h-48 md:h-auto shrink-0 border-l border-gray-700 bg-gray-800">
-                <ChatBox playerId={user.uid} username={user.username} />
+                <ChatBox playerId={user.uid} username={user.username} isDrawer={isDrawer} />
               </div>
             </div>
           </div>
@@ -518,6 +528,19 @@ const App: React.FC = () => {
                 <p className="text-gray-400 animate-pulse">Preparing the next masterpiece...</p>
                 {/* <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div> */}
               </div>
+
+              {roundWinners.length > 0 && (
+                <div className="mt-6 bg-gray-700/50 p-4 rounded-lg w-full">
+                  <h3 className="text-sm font-bold text-green-400 uppercase mb-2">Correct Guesses</h3>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {roundWinners.map(name => (
+                      <span key={name} className="px-2 py-1 bg-green-900/50 text-green-200 text-xs rounded border border-green-700">
+                        {name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
