@@ -87,21 +87,6 @@ class PiNetworkService {
 
     } catch (e: any) {
         this.error("Ad Flow Error", e);
-        
-        // Fallback for Testing: If real ad fails (common in Sandbox/Testnet if no fill),
-        // simulate a successful ad watch so the user can test the REWARD logic.
-        // In production, you would NOT do this.
-        const isSandbox = true; 
-        if (isSandbox) {
-            this.log("⚠️ Real Ad Failed. Falling back to Mock Ad for Testing...");
-            return new Promise((resolve) => {
-                setTimeout(() => {
-                    this.log("Mock Ad Watched (Fallback)");
-                    resolve("mock-ad-id-fallback-" + Date.now());
-                }, 1500);
-            });
-        }
-
         throw e;
     }
   }
@@ -138,9 +123,9 @@ class PiNetworkService {
   private init() {
     if (window.Pi) {
       try {
-        window.Pi.init({ version: '2.0', sandbox: true });
+        window.Pi.init({ version: '2.0', sandbox: false });
         this.isInitialized = true;
-        this.log("Pi SDK initialized successfully (Sandbox Mode)");
+        this.log("Pi SDK initialized successfully");
       } catch (e) {
         this.error("Pi SDK init failed", e);
       }
