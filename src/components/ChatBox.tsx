@@ -3,12 +3,10 @@ import type { ChatMessage } from '../types';
 import { socketService } from '../services/socketService';
 
 interface ChatBoxProps {
-  playerId: string;
-  username: string;
   isDrawer?: boolean;
 }
 
-export const ChatBox: React.FC<ChatBoxProps> = ({ playerId, username, isDrawer }) => {
+export const ChatBox: React.FC<ChatBoxProps> = ({ isDrawer }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);

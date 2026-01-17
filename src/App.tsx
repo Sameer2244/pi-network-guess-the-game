@@ -526,7 +526,7 @@ const App: React.FC = () => {
 
               {/* Chat Sidebar */}
               <div className="w-full md:w-80 h-48 md:h-auto shrink-0 border-l border-gray-700 bg-gray-800">
-                <ChatBox playerId={user.uid} username={user.username} isDrawer={isDrawer} />
+                <ChatBox isDrawer={isDrawer} />
               </div>
             </div>
           </div>
