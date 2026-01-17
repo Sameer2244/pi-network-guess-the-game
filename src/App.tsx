@@ -22,6 +22,9 @@ const App: React.FC = () => {
   const [isDrawer, setIsDrawer] = useState(false);
   const [timer, setTimer] = useState(60);
   const [word, setWord] = useState<string | null>(null); // Only drawer sees this
+  const [revealedWord, setRevealedWord] = useState<string>("");
+  const [roundInfo, setRoundInfo] = useState({ current: 0, total: 10 });
+  const [rankings, setRankings] = useState<any[]>([]); // For Game Over
 
   // Debug State
   const [showLogs, setShowLogs] = useState(false);
@@ -70,6 +73,8 @@ const App: React.FC = () => {
       setRooms(roomsData);
     });
 
+
+
     socketService.on('room_state', (data: any) => {
       // data: { id, players, gameState }
       const { id, players, gameState } = data;
@@ -85,6 +90,7 @@ const App: React.FC = () => {
       }));
 
       setPhase(gameState.phase);
+      setRankings(players.sort((a: any, b: any) => b.score - a.score));
 
       if (gameState.currentDrawer) {
         setIsDrawer(gameState.currentDrawer === socketService.socketId);
@@ -94,6 +100,17 @@ const App: React.FC = () => {
         setWord(gameState.currentWord);
       } else {
         setWord(null);
+      }
+
+      if (gameState.revealedWord) {
+        setRevealedWord(gameState.revealedWord);
+      }
+
+      if (gameState.currentRound) {
+        setRoundInfo({
+          current: gameState.currentRound,
+          total: gameState.totalRounds || 10
+        });
       }
 
       if (gameState.timer !== undefined) {
@@ -303,6 +320,13 @@ const App: React.FC = () => {
                 </div>
               </div>
 
+              <div className="md:mb-4 w-full flex md:block justify-between items-center text-gray-300">
+                <div className="text-xs text-gray-400 uppercase font-bold">Round</div>
+                <div className="font-mono font-bold text-sm">
+                  {roundInfo.current} / {roundInfo.total}
+                </div>
+              </div>
+
               {isDrawer && (
                 <div className="flex gap-2 md:flex-col">
                   <div className="text-xs text-gray-400 uppercase font-bold hidden md:block">Tools</div>
@@ -341,7 +365,7 @@ const App: React.FC = () => {
               {!isDrawer && (
                 <div className="bg-gray-700/50 p-2 rounded border border-gray-600 mt-2">
                   <div className="text-xs text-gray-400 uppercase">Hint:</div>
-                  <div className="font-bold tracking-widest">_ _ _ _ _</div>
+                  <div className="font-bold tracking-widest text-lg font-mono">{revealedWord || "_ _ _ _ _"}</div>
                 </div>
               )}
 
@@ -383,6 +407,40 @@ const App: React.FC = () => {
               >
                 Back to Lobby
               </button>
+            </div>
+          </div>
+        )}
+
+        {phase === GamePhase.GAME_OVER && (
+          <div className="absolute inset-0 z-50 bg-black/95 flex items-center justify-center">
+            <div className="bg-gray-800 p-8 rounded-xl text-center border border-yellow-500 shadow-2xl max-w-lg w-full">
+              <h2 className="text-4xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600">Game Over!</h2>
+
+              <div className="space-y-4 mb-8">
+                {rankings.slice(0, 3).map((player, idx) => (
+                  <div key={player.id} className={`flex items-center justify-between p-3 rounded ${idx === 0 ? 'bg-yellow-900/40 border border-yellow-500/50' : 'bg-gray-700/50'}`}>
+                    <div className="flex items-center gap-3">
+                      <span className={`font-bold text-xl w-6 ${idx === 0 ? 'text-yellow-400' : idx === 1 ? 'text-gray-300' : 'text-amber-600'}`}>#{idx + 1}</span>
+                      <span className="font-bold">{player.username}</span>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <span className="text-sm font-bold">{player.score} pts</span>
+                      <span className="text-xs text-yellow-500">
+                        +{idx === 0 ? 50 : idx === 1 ? 30 : 15} Coins Bonus
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-center gap-4">
+                <button
+                  onClick={handleLeaveRoom}
+                  className="px-8 py-3 bg-purple-600 rounded-lg text-white font-bold hover:bg-purple-500 transition-colors"
+                >
+                  Back to Lobby
+                </button>
+              </div>
             </div>
           </div>
         )}

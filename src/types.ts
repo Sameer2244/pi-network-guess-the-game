@@ -16,9 +16,20 @@ export const GamePhase = {
   LOBBY: 'LOBBY',
   PLAYING: 'PLAYING',
   ROUND_END: 'ROUND_END',
+  GAME_OVER: 'GAME_OVER',
 } as const;
 
 export type GamePhase = (typeof GamePhase)[keyof typeof GamePhase];
+
+export interface GameState {
+    phase: GamePhase;
+    timer: number;
+    currentDrawer?: string;
+    currentWord?: string;
+    revealedWord?: string;
+    currentRound: number;
+    totalRounds: number;
+}
 
 export interface Player {
   id: string;

@@ -104,6 +104,15 @@ const io = new Server(httpServer, {
 
 const PORT = process.env.PORT || 3001;
 
+import { GameService } from './game/GameService';
+
+// ... (previous imports, keep them?)
+// Let's just import GameService and keep others
+// I will not replace the top part unless necessary.
+// I will start replacement from the socket connection logic or global scope.
+
+const gameService = new GameService(io);
+
 // --- In-Memory State ---
 const rooms: Map<string, Room> = new Map();
 // Map socket.id -> Player
@@ -121,19 +130,6 @@ function getRoomsList() {
 
 function broadcastRoomsUpdate() {
     io.emit('rooms_update', getRoomsList());
-}
-
-function broadcastRoomState(roomId: string) {
-    const room = rooms.get(roomId);
-    if (room) {
-        // Send sanitize room state (mask word if not drawer) - simpler for now to send full
-        // TODO: Mask word for guessers
-        io.to(roomId).emit('room_state', {
-            id: room.id,
-            players: room.players,
-            gameState: room.gameState
-        });
-    }
 }
 
 // --- Socket Connection ---
@@ -165,7 +161,8 @@ io.on('connection', (socket: Socket) => {
         uid: userData.uid,
         username: userData.username,
         score: 0,
-        isDrawer: false
+        isDrawer: false,
+        sessionCoins: 0
     };
     players.set(socket.id, newPlayer);
     
@@ -192,7 +189,11 @@ io.on('connection', (socket: Socket) => {
         players: [player], // Add creator immediately
         gameState: {
             phase: GamePhase.LOBBY,
-            timer: 0
+            timer: 0,
+            currentRound: 0,
+            totalRounds: 10,
+            revealedWord: "",
+            correctlyGuessedPlayerIds: []
         }
     };
     
@@ -205,7 +206,7 @@ io.on('connection', (socket: Socket) => {
 
     // Broadcast updates
     broadcastRoomsUpdate();
-    broadcastRoomState(roomId);
+    gameService.broadcastRoomState(newRoom);
   });
 
   // 3. Join Room
@@ -241,38 +242,16 @@ io.on('connection', (socket: Socket) => {
       const room = rooms.get(player.roomId);
       if (!room) return;
 
-      const isCorrectGuess = 
-        room.gameState.phase === GamePhase.PLAYING && 
-        room.gameState.currentWord && 
-        text.toLowerCase().trim() === room.gameState.currentWord.toLowerCase().trim() &&
-        !player.isDrawer;
-
-      if (isCorrectGuess) {
-          // Handle Correct Guess
-           const systemMsg: ChatMessage = {
-              id: uuidv4(),
-              playerId: 'system',
-              username: 'System',
-              text: `${player.username} guessed the Word!`,
-              type: 'guess',
-              timestamp: Date.now()
-          };
-          io.to(room.id).emit('chat_message', systemMsg);
-          
-          // Award points
-          player.score += 10;
-          // Drawer gets points too
-          const drawer = room.players.find(p => p.id === room.gameState.currentDrawer);
-          if (drawer) drawer.score += 5;
-
-          broadcastRoomState(room.id);
-          
-          // TODO: Trigger round end or next turn
+      if (room.gameState.phase === GamePhase.PLAYING) {
+         const message = gameService.handleMessage(room, player, text);
+         if (message) {
+             io.to(room.id).emit('chat_message', message);
+         }
       } else {
-          // Regular Chat
-          const msg: ChatMessage = {
+          // Regular Chat in Lobby
+           const msg: ChatMessage = {
               id: uuidv4(),
-              playerId: player.id, // Use socket ID as consistent player ID for now
+              playerId: player.id,
               username: player.username,
               text: text,
               type: 'chat',
@@ -289,7 +268,9 @@ io.on('connection', (socket: Socket) => {
       
       const room = rooms.get(player.roomId);
       if (room) {
-          startGame(room);
+          // Only creator or anyone? Let's say anyone for now is fine, 
+          // usually host. Room doesn't have host field in type yet.
+          gameService.startGame(room);
       }
   });
 
@@ -318,7 +299,7 @@ function joinRoom(socket: Socket, roomId: string) {
         socket.join(roomId);
 
         // Notify room
-        broadcastRoomState(roomId);
+        gameService.broadcastRoomState(room);
         broadcastRoomsUpdate(); // Update player counts for lobby
     }
 }
@@ -336,6 +317,7 @@ function leaveRoom(socket: Socket) {
         player.isDrawer = false;
 
         if (room.players.length === 0) {
+            if (room.timerInterval) clearInterval(room.timerInterval);
             rooms.delete(roomId);
             console.log(`Room Deleted (Empty): ${roomId}`);
         } else {
@@ -344,54 +326,12 @@ function leaveRoom(socket: Socket) {
                  // End round or pick new drawer
                  room.gameState.phase = GamePhase.ROUND_END;
                  room.gameState.currentDrawer = undefined;
+                 if (room.timerInterval) clearInterval(room.timerInterval);
              }
-             broadcastRoomState(roomId);
+             gameService.broadcastRoomState(room);
         }
         broadcastRoomsUpdate();
     }
-}
-
-function startGame(room: Room) {
-    if (room.players.length < 2) return; // Need at least 2 players
-
-    room.gameState.phase = GamePhase.PLAYING;
-    room.gameState.timer = 60;
-    
-    // Pick random drawer
-    const drawerIndex = Math.floor(Math.random() * room.players.length);
-    const drawer = room.players[drawerIndex];
-    
-    // Reset all drawers
-    room.players.forEach(p => p.isDrawer = false);
-    drawer.isDrawer = true;
-    room.gameState.currentDrawer = drawer.id;
-
-    // Pick random word
-    const words = ["Apple", "Banana", "Car", "House", "Sun", "Tree", "Cat", "Dog", "Mouse", "Mouse"];
-    room.gameState.currentWord = words[Math.floor(Math.random() * words.length)];
-
-    broadcastRoomState(room.id);
-
-    // Start Timer Interval (In memory for simple implementation)
-    // Note: In real app, manage this better to avoid leaks
-    const interval = setInterval(() => {
-        if (!rooms.has(room.id)) {
-            clearInterval(interval);
-            return;
-        }
-        
-        room.gameState.timer--;
-        
-        if (room.gameState.timer <= 0) {
-            clearInterval(interval);
-            room.gameState.phase = GamePhase.ROUND_END;
-            broadcastRoomState(room.id);
-        } else {
-             // Optimize: Don't broadcast every second if not needed, but for sync it's okay
-             // Or just emit 'timer_tick'
-             io.to(room.id).emit('timer_update', room.gameState.timer);
-        }
-    }, 1000);
 }
 
 httpServer.listen(PORT, () => {

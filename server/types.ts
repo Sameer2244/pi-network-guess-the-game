@@ -16,6 +16,7 @@ export const GamePhase = {
   LOBBY: 'LOBBY',
   PLAYING: 'PLAYING',
   ROUND_END: 'ROUND_END',
+  GAME_OVER: 'GAME_OVER',
 } as const;
 
 export type GamePhase = (typeof GamePhase)[keyof typeof GamePhase];
@@ -28,6 +29,7 @@ export interface Player {
   avatarUrl?: string;
   isDrawer: boolean;
   roomId?: string; // Track which room they are in
+  sessionCoins: number;
 }
 
 export interface ChatMessage {
@@ -62,5 +64,10 @@ export interface Room {
       timer: number;
       currentDrawer?: string; // Player ID
       currentWord?: string;
-  }
+      currentRound: number;
+      totalRounds: number;
+      revealedWord: string;
+      correctlyGuessedPlayerIds: string[];
+  };
+  timerInterval?: NodeJS.Timeout;
 }
