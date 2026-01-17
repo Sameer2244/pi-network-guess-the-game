@@ -323,6 +323,63 @@ io.on('connection', (socket: Socket) => {
       }
   });
 
+  // 8. Buy Hint (Spend coins to reveal a letter)
+  socket.on('buy_hint', async () => {
+      const player = players.get(socket.id);
+      if (!player || !player.roomId) return;
+      
+      const room = rooms.get(player.roomId);
+      if (!room || room.gameState.phase !== GamePhase.PLAYING) return;
+      
+      // Can't buy hint if you're the drawer or already guessed
+      if (player.isDrawer) return;
+      if (room.gameState.correctlyGuessedPlayerIds.includes(player.id)) return;
+      
+      const currentWord = room.gameState.currentWord;
+      const revealedWord = room.gameState.revealedWord;
+      if (!currentWord || !revealedWord) return;
+      
+      // Find unrevealed positions
+      const unrevealedIndices: number[] = [];
+      for (let i = 0; i < revealedWord.length; i++) {
+          if (revealedWord[i] === '_') {
+              unrevealedIndices.push(i);
+          }
+      }
+      
+      // No letters left to reveal
+      if (unrevealedIndices.length === 0) {
+          socket.emit('hint_error', 'No more letters to reveal!');
+          return;
+      }
+      
+      // Check if player has enough coins (cost: 10 coins per hint)
+      const HINT_COST = 10;
+      const dbUser = await User.findOne({ uid: player.uid });
+      if (!dbUser || dbUser.coins < HINT_COST) {
+          socket.emit('hint_error', 'Not enough coins! Need 10 coins for a hint.');
+          return;
+      }
+      
+      // Deduct coins
+      dbUser.coins -= HINT_COST;
+      await dbUser.save();
+      
+      // Reveal a random letter
+      const randomIndex = unrevealedIndices[Math.floor(Math.random() * unrevealedIndices.length)];
+      const newRevealed = revealedWord.split('');
+      newRevealed[randomIndex] = currentWord[randomIndex];
+      room.gameState.revealedWord = newRevealed.join('');
+      
+      // Notify player of coin update
+      socket.emit('profile_update', { coins: dbUser.coins });
+      
+      // Broadcast the new revealed word to all players
+      gameService.broadcastRoomState(room);
+      
+      console.log(`[Hint] ${player.username} bought a hint. Revealed: ${room.gameState.revealedWord}`);
+  });
+
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
     leaveRoom(socket);

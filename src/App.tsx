@@ -130,12 +130,17 @@ const App: React.FC = () => {
       if (data.coins !== undefined) setCoins(data.coins);
     });
 
+    socketService.on('hint_error', (message: string) => {
+      alert(message);
+    });
+
     // Cleanup listeners
     return () => {
       socketService.off('rooms_update', () => { });
       socketService.off('room_state', () => { });
       socketService.off('timer_update', () => { });
       socketService.off('profile_update', () => { });
+      socketService.off('hint_error', () => { });
     };
   }, [user]);
 
@@ -186,6 +191,10 @@ const App: React.FC = () => {
     socketService.emit('leave_room', {});
     setPhase(GamePhase.LOBBY);
     setCurrentRoom(null);
+  };
+
+  const handleBuyHint = () => {
+    socketService.emit('buy_hint', {});
   };
 
   const handleMockMode = () => {
@@ -355,86 +364,145 @@ const App: React.FC = () => {
           </div>
         )}
 
+
         {currentRoom && phase === GamePhase.PLAYING && (
-          <div className="flex h-full flex-col md:flex-row">
-            {/* Left Sidebar: Player List & Tools (Mobile: Top) */}
-            <div className="bg-gray-800 md:w-48 p-2 flex md:flex-col gap-2 overflow-x-auto md:overflow-visible shrink-0 border-r border-gray-700">
-              <div className="md:mb-4 w-full flex md:block justify-between items-center">
-                <div className="text-xs text-gray-400 uppercase font-bold mb-1">Time</div>
-                <div className={`text-2xl font-mono font-bold ${timer < 10 ? 'text-red-500 animate-pulse' : 'text-white'}`}>
-                  {timer}s
+          <div className="flex h-full flex-col">
+            {/* Top Game Info Bar */}
+            <div className="bg-gray-800 border-b border-gray-700 px-4 py-2 flex items-center justify-between shrink-0">
+              {/* Left: Round Info */}
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 bg-gray-700/50 rounded-lg px-3 py-1">
+                  <span className="text-xs text-gray-400 uppercase">Round</span>
+                  <span className="font-mono font-bold text-purple-400">
+                    {roundInfo.current}/{roundInfo.total}
+                  </span>
                 </div>
+                <button
+                  onClick={handleLeaveRoom}
+                  className="text-xs text-red-400 hover:text-red-300 transition-colors px-2 py-1 border border-red-400/30 rounded hover:bg-red-400/10"
+                >
+                  Leave
+                </button>
               </div>
 
-              <div className="md:mb-4 w-full flex md:block justify-between items-center text-gray-300">
-                <div className="text-xs text-gray-400 uppercase font-bold">Round</div>
-                <div className="font-mono font-bold text-sm">
-                  {roundInfo.current} / {roundInfo.total}
-                </div>
-              </div>
-
-              {isDrawer && (
-                <div className="flex gap-2 md:flex-col">
-                  <div className="text-xs text-gray-400 uppercase font-bold hidden md:block">Tools</div>
-                  <input
-                    type="color"
-                    value={color}
-                    onChange={(e) => setColor(e.target.value)}
-                    className="w-8 h-8 rounded cursor-pointer"
-                  />
-                  <div className="flex gap-1 bg-gray-700 rounded p-1">
-                    {[2, 5, 10].map(size => (
-                      <button
-                        key={size}
-                        onClick={() => setLineWidth(size)}
-                        className={`w-6 h-6 rounded-full bg-gray-500 ${lineWidth === size ? 'ring-2 ring-white bg-gray-400' : ''}`}
-                        style={{ transform: `scale(${size / 10 + 0.5})` }}
-                      />
-                    ))}
+              {/* Center: Word Display */}
+              <div className="flex-1 flex justify-center">
+                {isDrawer && word && (
+                  <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-2 rounded-full shadow-lg">
+                    <span className="text-xs text-purple-200 uppercase mr-2">Draw:</span>
+                    <span className="font-bold text-lg text-white">{word}</span>
                   </div>
-                  <button
-                    onClick={() => clearCanvasRef.current()}
-                    className="px-2 py-1 bg-red-900/50 text-red-300 text-xs rounded hover:bg-red-800"
-                  >
-                    Clear
-                  </button>
-                </div>
-              )}
+                )}
+                {!isDrawer && (
+                  <div className="flex items-center gap-3">
+                    <div className="bg-gray-700 px-6 py-2 rounded-full border border-gray-600">
+                      <span className="font-bold tracking-[0.3em] text-xl font-mono text-white">
+                        {revealedWord || "_ _ _ _ _"}
+                      </span>
+                    </div>
+                    <button
+                      onClick={handleBuyHint}
+                      className="flex items-center gap-1 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-black font-bold text-xs px-3 py-2 rounded-full transition-all shadow-lg hover:shadow-yellow-500/30"
+                      title="Reveal a letter (10 coins)"
+                    >
+                      <span>💡</span>
+                      <span>Hint</span>
+                      <span className="bg-black/20 px-1.5 py-0.5 rounded text-[10px]">10¢</span>
+                    </button>
+                  </div>
+                )}
+              </div>
 
-              {/* Word Display (Drawer Only) */}
-              {isDrawer && word && (
-                <div className="bg-purple-900/50 p-2 rounded border border-purple-500 mt-2">
-                  <div className="text-xs text-purple-300 uppercase">Draw:</div>
-                  <div className="font-bold text-lg">{word}</div>
-                </div>
-              )}
-              {!isDrawer && (
-                <div className="bg-gray-700/50 p-2 rounded border border-gray-600 mt-2">
-                  <div className="text-xs text-gray-400 uppercase">Hint:</div>
-                  <div className="font-bold tracking-widest text-lg font-mono">{revealedWord || "_ _ _ _ _"}</div>
-                </div>
-              )}
-
-              <button onClick={handleLeaveRoom} className="mt-auto text-xs text-red-400 hover:text-red-300 underline">
-                Leave
-              </button>
-            </div>
-
-            {/* Center: Canvas */}
-            <div className="flex-1 bg-gray-200 relative p-4 flex items-center justify-center overflow-hidden">
-              <div className="aspect-square w-full max-w-[600px] max-h-[90vh] shadow-2xl">
-                <CanvasBoard
-                  isDrawer={isDrawer}
-                  currentColor={color}
-                  lineWidth={lineWidth}
-                  onClearRef={clearCanvasRef}
-                />
+              {/* Right: Timer */}
+              <div className={`flex items-center gap-2 px-4 py-2 rounded-full ${timer < 10 ? 'bg-red-600 animate-pulse' : 'bg-gray-700'}`}>
+                <span className="text-2xl">⏱️</span>
+                <span className={`text-2xl font-mono font-bold ${timer < 10 ? 'text-white' : 'text-green-400'}`}>
+                  {timer}s
+                </span>
               </div>
             </div>
 
-            {/* Right: Chat (Mobile: Bottom overlay or separate) */}
-            <div className="w-full md:w-72 h-48 md:h-auto shrink-0 border-l border-gray-700">
-              <ChatBox playerId={user.uid} username={user.username} />
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+              {/* Canvas Area */}
+              <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Canvas */}
+                <div className="flex-1 bg-gradient-to-br from-gray-100 to-gray-300 relative flex items-center justify-center overflow-hidden p-2 md:p-4">
+                  <div className="aspect-square w-full max-w-[600px] max-h-full shadow-2xl rounded-lg overflow-hidden">
+                    <CanvasBoard
+                      isDrawer={isDrawer}
+                      currentColor={color}
+                      lineWidth={lineWidth}
+                      onClearRef={clearCanvasRef}
+                    />
+                  </div>
+                </div>
+
+                {/* Bottom Toolbar (Drawer Only) */}
+                {isDrawer && (
+                  <div className="bg-gray-800 border-t border-gray-700 px-4 py-3 flex items-center justify-center gap-4 shrink-0">
+                    {/* Color Picker */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-400 uppercase hidden sm:inline">Color</span>
+                      <input
+                        type="color"
+                        value={color}
+                        onChange={(e) => setColor(e.target.value)}
+                        className="w-10 h-10 rounded-lg cursor-pointer border-2 border-gray-600 hover:border-purple-400 transition-colors"
+                      />
+                      {/* Quick Colors */}
+                      <div className="flex gap-1">
+                        {['#000000', '#ffffff', '#ef4444', '#22c55e', '#3b82f6', '#eab308'].map(c => (
+                          <button
+                            key={c}
+                            onClick={() => setColor(c)}
+                            className={`w-7 h-7 rounded-full border-2 transition-transform hover:scale-110 ${color === c ? 'border-purple-400 ring-2 ring-purple-400' : 'border-gray-600'}`}
+                            style={{ backgroundColor: c }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="w-px h-8 bg-gray-600" />
+
+                    {/* Brush Sizes */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-400 uppercase hidden sm:inline">Size</span>
+                      <div className="flex gap-2 items-center">
+                        {[2, 5, 10, 20].map(size => (
+                          <button
+                            key={size}
+                            onClick={() => setLineWidth(size)}
+                            className={`rounded-full bg-white transition-all ${lineWidth === size ? 'ring-2 ring-purple-400' : 'hover:ring-2 hover:ring-gray-400'}`}
+                            style={{
+                              width: `${Math.min(size + 12, 32)}px`,
+                              height: `${Math.min(size + 12, 32)}px`
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="w-px h-8 bg-gray-600" />
+
+                    {/* Clear Button */}
+                    <button
+                      onClick={() => clearCanvasRef.current()}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-bold rounded-lg transition-colors flex items-center gap-2"
+                    >
+                      <span>🗑️</span>
+                      <span className="hidden sm:inline">Clear</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Chat Sidebar */}
+              <div className="w-full md:w-80 h-48 md:h-auto shrink-0 border-l border-gray-700 bg-gray-800">
+                <ChatBox playerId={user.uid} username={user.username} />
+              </div>
             </div>
           </div>
         )}
@@ -447,7 +515,7 @@ const App: React.FC = () => {
                 The word was: <span className="text-green-400 font-bold">{word}</span>
               </p>
               <div className="flex flex-col items-center gap-2">
-                <p className="text-gray-400 animate-pulse">Next round starting soon...</p>
+                <p className="text-gray-400 animate-pulse">Preparing the next masterpiece...</p>
                 {/* <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div> */}
               </div>
             </div>
@@ -481,7 +549,7 @@ const App: React.FC = () => {
                   onClick={handleLeaveRoom}
                   className="px-8 py-3 bg-purple-600 rounded-lg text-white font-bold hover:bg-purple-500 transition-colors"
                 >
-                  Back to Lobby
+                  Back to Menu
                 </button>
               </div>
             </div>
