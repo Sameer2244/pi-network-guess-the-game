@@ -21,7 +21,7 @@ mongoose.connect(process.env.MONGO_URI || '')
 .catch(err => console.error('MongoDB Connection Error:', err));
 
 const PI_API_KEY = process.env.PI_API_KEY || "mock-key"; 
-const PI_API_URL = "https://api.minepi.com/v2";
+const PI_API_URL = "https://api.testnet.minepi.com";
 
 // --- Payment Routes ---
 
