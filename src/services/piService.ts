@@ -91,7 +91,7 @@ class PiNetworkService {
         // Fallback for Testing: If real ad fails (common in Sandbox/Testnet if no fill),
         // simulate a successful ad watch so the user can test the REWARD logic.
         // In production, you would NOT do this.
-        const isSandbox = true; // We forced this in init
+        const isSandbox = true; 
         if (isSandbox) {
             this.log("⚠️ Real Ad Failed. Falling back to Mock Ad for Testing...");
             return new Promise((resolve) => {
@@ -138,7 +138,6 @@ class PiNetworkService {
   private init() {
     if (window.Pi) {
       try {
-        // Use sandbox: true for development/testnet
         window.Pi.init({ version: '2.0', sandbox: true });
         this.isInitialized = true;
         this.log("Pi SDK initialized successfully (Sandbox Mode)");
