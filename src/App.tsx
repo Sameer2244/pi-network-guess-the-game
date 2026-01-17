@@ -443,16 +443,13 @@ const App: React.FC = () => {
           <div className="absolute inset-0 z-50 bg-black/80 flex items-center justify-center">
             <div className="bg-gray-800 p-8 rounded-xl text-center border border-purple-500 shadow-2xl">
               <h2 className="text-3xl font-bold mb-4 text-white">Round Over!</h2>
-              {/* <p className="text-xl text-gray-300 mb-6">The word was: <span className="text-green-400 font-bold">Apple</span></p> */}
-              {/* TODO: Display word from server */}
-              <button
-                onClick={() => {
-                  handleLeaveRoom(); // Simple reset for now
-                }}
-                className="px-6 py-2 bg-purple-600 rounded text-white font-bold hover:bg-purple-500"
-              >
-                Back to Lobby
-              </button>
+              <p className="text-xl text-gray-300 mb-6">
+                The word was: <span className="text-green-400 font-bold">{word}</span>
+              </p>
+              <div className="flex flex-col items-center gap-2">
+                <p className="text-gray-400 animate-pulse">Next round starting soon...</p>
+                {/* <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div> */}
+              </div>
             </div>
           </div>
         )}

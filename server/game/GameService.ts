@@ -50,8 +50,14 @@ export class GameService {
         // Let's assume 10 turns total for simplicity unless specified.
         // "one game should be atleast of 10 rounds" -> 10 words drawn.
         
-        const drawerIndex = Math.floor(Math.random() * room.players.length);
-        const drawer = room.players[drawerIndex];
+        let candidates = room.players;
+        // If there are multiple players, exclude the previous drawer
+        if (room.players.length > 1 && room.gameState.currentDrawer) {
+            candidates = room.players.filter(p => p.id !== room.gameState.currentDrawer);
+        }
+
+        const candidateIndex = Math.floor(Math.random() * candidates.length);
+        const drawer = candidates[candidateIndex];
         
         room.players.forEach(p => p.isDrawer = false);
         drawer.isDrawer = true;
