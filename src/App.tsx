@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { piService } from './services/piService';
-import { socketService } from './services/socketService';
+import React, { useEffect, useRef, useState } from 'react';
 import { CanvasBoard } from './components/CanvasBoard';
 import { ChatBox } from './components/ChatBox';
 import { Lobby } from './components/Lobby';
+import { piService } from './services/piService';
+import { socketService } from './services/socketService';
 import type { PiUser, Room } from './types';
 import { GamePhase } from './types';
 
@@ -31,9 +31,9 @@ const App: React.FC = () => {
   const [rankings, setRankings] = useState<any[]>([]); // For Game Over
 
   // Debug State
-  const [showLogs, setShowLogs] = useState(false);
-  const [logs, setLogs] = useState<string[]>([]);
-  const logsEndRef = useRef<HTMLDivElement>(null);
+  // const [showLogs, setShowLogs] = useState(false);
+  // const [logs, setLogs] = useState<string[]>([]);
+  // const logsEndRef = useRef<HTMLDivElement>(null);
 
   // Drawing State
   const [color, setColor] = useState('#000000');
@@ -42,17 +42,17 @@ const App: React.FC = () => {
   const clearCanvasRef = useRef<() => void>(() => { });
 
   // Auto-scroll logs
-  useEffect(() => {
-    if (showLogs && logsEndRef.current) {
-      logsEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [logs, showLogs]);
+  // useEffect(() => {
+  //   if (showLogs && logsEndRef.current) {
+  //     logsEndRef.current.scrollIntoView({ behavior: "smooth" });
+  //   }
+  // }, [logs, showLogs]);
 
   useEffect(() => {
     // Subscribe to Pi Service Logs
-    piService.onLog((msg) => {
-      setLogs(prev => [...prev, msg]);
-    });
+    // piService.onLog((msg) => {
+    //   setLogs(prev => [...prev, msg]);
+    // });
 
     const init = async () => {
       try {
@@ -303,7 +303,7 @@ const App: React.FC = () => {
       </header>
 
       {/* Debug Logs Overlay */}
-      {showLogs && (
+      {/* {showLogs && (
         <div className="fixed top-14 left-0 right-0 h-48 bg-black/90 z-[100] overflow-y-auto border-b border-gray-600 p-2 font-mono text-xs text-green-400">
           {logs.length === 0 && <span className="text-gray-500">Waiting for logs...</span>}
           {logs.map((log, i) => (
@@ -313,7 +313,7 @@ const App: React.FC = () => {
           ))}
           <div ref={logsEndRef} />
         </div>
-      )}
+      )} */}
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden relative">
