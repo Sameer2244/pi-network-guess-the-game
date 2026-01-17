@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { CanvasBoard } from './components/CanvasBoard';
 import { ChatBox } from './components/ChatBox';
 import { Lobby } from './components/Lobby';
@@ -12,7 +13,9 @@ import { TermsOfService } from './pages/TermsOfService';
 
 // Mock rooms data
 const App: React.FC = () => {
-  const [view, setView] = useState<'game' | 'privacy' | 'terms'>('game');
+  const navigate = useNavigate();
+  const location = useLocation();
+  // const [view, setView] = useState<'game' | 'privacy' | 'terms'>('game');
   const [user, setUser] = useState<PiUser | null>(null);
   const [phase, setPhase] = useState<GamePhase>(GamePhase.LOBBY);
   const [loading, setLoading] = useState(true);
@@ -236,6 +239,14 @@ const App: React.FC = () => {
     setError(null);
   };
 
+  if (location.pathname === '/privacy-policy') {
+    return <PrivacyPolicy onBack={() => navigate('/')} />;
+  }
+
+  if (location.pathname === '/terms-of-service') {
+    return <TermsOfService onBack={() => navigate('/')} />;
+  }
+
   if (loading) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-gray-900 text-purple-400 text-xl font-bold">
@@ -275,13 +286,7 @@ const App: React.FC = () => {
     return <div className="p-10 text-center text-white">Authentication Failed. Please open in Pi Browser.</div>;
   }
 
-  if (view === 'privacy') {
-    return <PrivacyPolicy onBack={() => setView('game')} />;
-  }
 
-  if (view === 'terms') {
-    return <TermsOfService onBack={() => setView('game')} />;
-  }
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-white">
@@ -355,9 +360,9 @@ const App: React.FC = () => {
               />
             </div>
             <footer className="p-4 text-center text-xs text-gray-500 space-x-4 border-t border-gray-800 bg-gray-900">
-              <button onClick={() => setView('privacy')} className="hover:text-purple-400 underline transition-colors">Privacy Policy</button>
+              <button onClick={() => navigate('/privacy-policy')} className="hover:text-purple-400 underline transition-colors">Privacy Policy</button>
               <span>•</span>
-              <button onClick={() => setView('terms')} className="hover:text-purple-400 underline transition-colors">Terms of Service</button>
+              <button onClick={() => navigate('/terms-of-service')} className="hover:text-purple-400 underline transition-colors">Terms of Service</button>
             </footer>
           </div>
         )}
