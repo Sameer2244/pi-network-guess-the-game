@@ -241,7 +241,7 @@ const App: React.FC = () => {
       <header className="h-14 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-4 shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-yellow-400">
-            PiDraw
+            DrawPi
           </span>
           <span className="text-xs text-gray-500 border border-gray-600 rounded px-1">v1.0.3</span>
           {user.username === 'Guest_User' && (
