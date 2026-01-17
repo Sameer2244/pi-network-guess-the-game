@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { CanvasBoard } from './components/CanvasBoard';
 import { ChatBox } from './components/ChatBox';
 import { Lobby } from './components/Lobby';
@@ -8,13 +8,11 @@ import { socketService } from './services/socketService';
 import type { PiUser, Room } from './types';
 import { GamePhase } from './types';
 
-import { PrivacyPolicy } from './pages/PrivacyPolicy';
-import { TermsOfService } from './pages/TermsOfService';
+
 
 // Mock rooms data
 const App: React.FC = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   // const [view, setView] = useState<'game' | 'privacy' | 'terms'>('game');
   const [user, setUser] = useState<PiUser | null>(null);
   const [phase, setPhase] = useState<GamePhase>(GamePhase.LOBBY);
@@ -239,13 +237,7 @@ const App: React.FC = () => {
     setError(null);
   };
 
-  if (location.pathname === '/privacy-policy') {
-    return <PrivacyPolicy onBack={() => navigate('/')} />;
-  }
 
-  if (location.pathname === '/terms-of-service') {
-    return <TermsOfService onBack={() => navigate('/')} />;
-  }
 
   if (loading) {
     return (
