@@ -154,9 +154,10 @@ class PiNetworkService {
 
   public async authenticate(): Promise<PiUser> {
     if (!this.isInitialized) this.init();
-
+    //enable sandbox true for testing
     if (this.isInitialized && window.Pi) {
       try {
+        window.Pi.init({ version: '2.0', sandbox: true });
         this.log("Starting Authentication...");
         const scopes = ['username', 'payments'];
         const authResult = await window.Pi.authenticate(scopes, this.onIncompletePaymentFound.bind(this));
