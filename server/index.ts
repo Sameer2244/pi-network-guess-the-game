@@ -94,6 +94,49 @@ app.post('/payments/complete', async (req, res) => {
     }
 });
 
+// Ad Reward Endpoint
+app.post('/ads/reward', async (req, res) => {
+    const { uid } = req.body;
+    console.log(`[Ad Reward] Request for user: ${uid}`);
+
+    if (!uid) {
+        return res.status(400).json({ error: "Missing uid" });
+    }
+
+    try {
+        // In a real app, verify the ad view here via server-side callback from Pi
+        // For now, we trust the client (MVP/Intranet)
+        // Award +5 Coins
+        const rewardAmount = 5;
+        
+        const updatedUser = await User.findOneAndUpdate(
+            { uid: uid },
+            { $inc: { coins: rewardAmount } },
+            { new: true }
+        );
+
+        if (!updatedUser) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        console.log(`[Ad Reward] Credited ${rewardAmount} coins to ${uid}`);
+
+        // Notify Socket if connected
+        // Iterate players to find socket id for this uid
+        for (const [socketId, player] of players.entries()) {
+            if (player.uid === uid) {
+                io.to(socketId).emit('profile_update', { coins: updatedUser.coins });
+                break;
+            }
+        }
+
+        res.json({ success: true, coins: updatedUser.coins });
+    } catch (error: any) {
+        console.error("Ad Reward Error:", error);
+        res.status(500).json({ error: "Reward failed" });
+    }
+});
+
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {

@@ -160,6 +160,29 @@ const App: React.FC = () => {
     }
   };
 
+  const handleWatchAd = async () => {
+    try {
+      await piService.showAd("rewarded");
+      // If successful (no error thrown), request reward from backend
+      // We need a server endpoint for this.
+      // For now, let's use a temporary fetch or socket call? 
+      // Best to use a proper REST endpoint as per plan.
+      // Note: Backend endpoint /ads/reward is next step.
+
+      await fetch(`${import.meta.env.VITE_SERVER_URL || 'http://localhost:3001'}/ads/reward`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: user?.uid })
+      });
+
+      // Refresh profile or wait for socket update
+      // Socket update should happen automatically if backend emits 'profile_update'
+    } catch (e) {
+      console.error("Ad failed", e);
+      alert("Ad failed to load or was cancelled.");
+    }
+  };
+
   const handleLeaveRoom = () => {
     socketService.emit('leave_room', {});
     setPhase(GamePhase.LOBBY);
@@ -245,6 +268,13 @@ const App: React.FC = () => {
               className="ml-2 text-xs bg-yellow-600 hover:bg-yellow-500 px-2 py-0.5 rounded text-white font-bold transition-colors"
             >
               +
+            </button>
+            <button
+              onClick={handleWatchAd}
+              className="ml-2 text-xs bg-purple-600 hover:bg-purple-500 px-2 py-0.5 rounded text-white font-bold transition-colors border border-purple-400"
+              title="Watch Ad (+5 Coins)"
+            >
+              Ad
             </button>
           </div>
           <div className="flex items-center gap-2">

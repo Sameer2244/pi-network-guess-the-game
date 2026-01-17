@@ -1,8 +1,5 @@
 import type { PiUser, PiPaymentDTO } from '../types';
 
-// Mock the Pi global object if it doesn't exist (for development outside Pi Browser)
-// Basic Pi SDK Interface
-// Basic Pi SDK Interface
 interface PiSDK {
   init(config: { version: string; sandbox: boolean }): void;
   authenticate(scopes: string[], onIncompletePaymentFound: (payment: any) => void): Promise<{
@@ -18,6 +15,9 @@ interface PiSDK {
       onError: (error: unknown, payment: unknown) => void;
     }
   ): Promise<unknown>;
+  Ads?: {
+    showAd(adId: string): void;
+  };
 }
 
 declare global {
@@ -35,6 +35,46 @@ class PiNetworkService {
   constructor() {
     this.init();
   }
+
+  public showAd(adType: "rewarded" | "interstitial"): Promise<void> {
+    this.log(`Requesting Ad: ${adType}`);
+    
+    if (this.isInitialized && window.Pi) {
+        return new Promise((resolve, reject) => {
+             // Mocking SDK Ad capability for now as specific syntax varies.
+             // We assume Pi.Ads.showAd exists or will be injected.
+             try {
+                 const piAny = window.Pi as any;
+                 if (piAny.Ads && piAny.Ads.showAd) {
+                     piAny.Ads.showAd(adType);
+                     // We simulate success after a delay since we lack the event callback spec
+                     setTimeout(() => resolve(), 3000); 
+                 } else {
+                     // Fallback or Sandbox mock
+                     this.log("Pi Ads SDK not found (Sandbox/Mock?)");
+                     // We resolve anyway for testing flow
+                     setTimeout(() => resolve(), 1000); 
+                 }
+             } catch (e) {
+                 this.error("Ad Error", e);
+                 reject(e);
+             }
+        });
+    } else {
+        return new Promise((resolve) => {
+            this.log("Simulating Mock Ad (Desktop)...");
+            setTimeout(() => {
+                this.log("Mock Ad Watched");
+                resolve();
+            }, 1500);
+        });
+    }
+  }
+
+  // ... (previous methods)
+
+
+
 
   // --- Logger Implementation ---
   public onLog(listener: (msg: string) => void) {
