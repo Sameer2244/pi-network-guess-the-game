@@ -270,12 +270,12 @@ const App: React.FC = () => {
           )}
         </div>
         <div className="flex items-center gap-4">
-          <button
+          {/* <button
             onClick={() => setShowLogs(!showLogs)}
             className="text-xs text-gray-400 border border-gray-600 px-2 py-1 rounded hover:bg-gray-700"
           >
             {showLogs ? 'Hide Logs' : 'Debug Logs'}
-          </button>
+          </button> */}
           <div className="flex items-center bg-gray-700 rounded-full px-3 py-1">
             <span className="text-yellow-400 font-bold mr-1">¢</span>
             <span className="text-sm font-mono">{coins}</span>
