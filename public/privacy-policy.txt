@@ -1,0 +1,41 @@
+PRIVACY POLICY FOR DRAWPI
+
+Last Updated: January 17, 2026
+
+1. INTRODUCTION
+Welcome to DrawPi ("we," "our," or "us"). We are committed to protecting your privacy. This Privacy Policy explains how we collect, use, and share information when you use our DrawPi application within the Pi Network ecosystem.
+
+2. INFORMATION WE COLLECT
+We collect the following information provided by the Pi Network SDK:
+- Pi Network UID: A unique identifier tailored to our app to persist your game progress and account.
+- Pi Network Username: Displayed to other players in lobbies and leaderboards.
+- Access Token: Used temporarily to authenticate your session with our backend servers.
+
+We also generate and store:
+- Game Data: Drawings, guesses, scores, and match history.
+- Virtual Currency Balance: The amount of "Game Coins" you possess.
+
+3. HOW WE USE YOUR INFORMATION
+We use your information to:
+- Facilitate multiplayer gameplay (connecting you with other players).
+- Process in-app payments for Game Coins.
+- Display leaderboards and rankings.
+- Maintain your user profile and stats.
+- Improve technical functionality and fix bugs.
+
+4. DATA SHARING
+We do not sell your personal data. We typically only share data in the following circumstances:
+- With Pi Network: For authentication and payment processing purposes as required by the platform.
+- With Other Players: Your username and in-game actions (drawings, guesses) are visible to players in your game room.
+
+5. DATA SECURITY
+We implement reasonable security measures to protect your information. However, no method of transmission over the Internet is 100% secure.
+
+6. USER RIGHTS
+You may request the deletion of your account data by contacting us. Note that since we rely on Pi Network for authentication, deleting your data will reset your progress and virtual currency balance.
+
+7. CHANGES TO THIS POLICY
+We may update this policy from time to time. Your continued use of the app signifies your acceptance of any changes.
+
+8. CONTACT US
+If you have questions about this Privacy Policy, please contact the developer via the Pi Network Developer Portal instructions or support channels.

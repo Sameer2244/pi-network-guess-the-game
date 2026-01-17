@@ -1,0 +1,40 @@
+TERMS OF SERVICE FOR DRAWPI
+
+Last Updated: January 17, 2026
+
+1. ACCEPTANCE OF TERMS
+By accessing or playing DrawPi ("the App"), you agree to be bound by these Terms of Service. If you do not agree, please do not use the App.
+
+2. DESCRIPTION OF SERVICE
+DrawPi is a multiplayer drawing and guessing game integrated with the Pi Network.
+
+3. USER CONDUCT
+You agree to use the App responsibly. You are strictly prohibited from:
+- Drawing offensive, explicit, or illegal content.
+- Harassing, bullying, or using hate speech in the game chat.
+- Cheating, exploiting bugs, or using automation tools to gain an unfair advantage.
+- Attempting to reverse engineer the App or its APIs.
+
+Violation of these rules may result in a temporary or permanent ban from the App.
+
+4. VIRTUAL CURRENCY (GAME COINS)
+- The App may allow you to acquire virtual "Game Coins" using Pi cryptocurrency.
+- Game Coins are for entertainment purposes only and have no real-world monetary value.
+- Game Coins are non-transferable and non-refundable, except as required by law or Pi Network policies.
+- We reserve the right to modify the price or utility of Game Coins at any time.
+
+5. INTELLECTUAL PROPERTY
+- You retain rights to the original drawings you create in the game, but you grant us a worldwide, royalty-free license to display and use them within the App (e.g., in game replays or potential highlights).
+- The App's code, design, and assets are owned by the developers.
+
+6. DISCLAIMER OF WARRANTIES
+The App is provided "AS IS" without warranties of any kind. We do not guarantee that the App will be uninterrupted, error-free, or secure.
+
+7. LIMITATION OF LIABILITY
+To the fullest extent permitted by law, we shall not be liable for any indirect, incidental, or consequential damages arising from your use of the App, including loss of data or Pi.
+
+8. GOVERNING LAW
+These Terms are governed by the laws applicable to the jurisdiction of the App developer, alongside the policies governing the Pi Network ecosystem.
+
+9. CHANGES TO TERMS
+We reserve the right to modify these Terms at any time. Continued use of the App constitutes acceptance of the modified Terms.
