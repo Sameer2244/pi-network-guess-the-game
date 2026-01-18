@@ -197,21 +197,34 @@ const App: React.FC = () => {
     }
   };
 
+  const [adStatus, setAdStatus] = useState<'idle' | 'playing' | 'verifying' | 'success' | 'error'>('idle');
+
   const handleWatchAd = async () => {
     try {
+      setAdStatus('playing');
       const adId = await piService.showAd("rewarded");
 
+      setAdStatus('verifying');
       // Request reward from backend with adId for verification
-      await fetch(`${import.meta.env.VITE_SERVER_URL || 'http://localhost:3001'}/ads/reward`, {
+      const response = await fetch(`${import.meta.env.VITE_SERVER_URL || 'http://localhost:3001'}/ads/reward`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ uid: user?.uid, adId: adId })
       });
 
-      // Refresh profile or wait for socket update
+      const data = await response.json();
+
+      if (data.coins !== undefined) {
+        setCoins(data.coins); // Force update from HTTP response
+        setAdStatus('success');
+        setTimeout(() => setAdStatus('idle'), 2000);
+      } else {
+        throw new Error("Invalid response from server");
+      }
     } catch (e: any) {
       console.error("Ad failed", e);
-      alert(`Ad failed: ${e.message || "Unknown error"}`);
+      setAdStatus('error');
+      setTimeout(() => setAdStatus('idle'), 3000);
     }
   };
 
@@ -591,6 +604,41 @@ const App: React.FC = () => {
           </div>
         )}
       </main>
+      {/* Ad Status Overlay */}
+      {adStatus !== 'idle' && (
+        <div className="fixed inset-0 z-[200] bg-black/80 flex items-center justify-center">
+          <div className="bg-gray-800 p-6 rounded-xl border border-purple-500 shadow-2xl flex flex-col items-center gap-4 max-w-sm text-center">
+            {adStatus === 'playing' && (
+              <>
+                <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                <p className="text-xl font-bold text-white">Watching Ad...</p>
+                <p className="text-sm text-gray-400">Please watch till the end to get your reward.</p>
+              </>
+            )}
+            {adStatus === 'verifying' && (
+              <>
+                <div className="w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin"></div>
+                <p className="text-xl font-bold text-white">Verifying Reward...</p>
+                <p className="text-sm text-gray-400">Please wait while we confirm with the server.</p>
+              </>
+            )}
+            {adStatus === 'success' && (
+              <>
+                <div className="text-5xl">💰</div>
+                <p className="text-xl font-bold text-green-400">Reward Granted!</p>
+                <p className="text-white">+5 Coins added to your wallet.</p>
+              </>
+            )}
+            {adStatus === 'error' && (
+              <>
+                <div className="text-5xl">❌</div>
+                <p className="text-xl font-bold text-red-500">Reward Failed</p>
+                <p className="text-sm text-gray-300">Something went wrong. Please try again.</p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

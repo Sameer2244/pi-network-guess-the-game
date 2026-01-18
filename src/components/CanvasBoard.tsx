@@ -154,17 +154,56 @@ export const CanvasBoard: React.FC<CanvasBoardProps> = ({
 
     // Resize Observer
     useEffect(() => {
-        const resizeCanvas = () => {
+        const handleResize = () => {
             if (containerRef.current && canvasRef.current) {
-                // Simple resize approach: fix internal resolution
-                // In production, you might want to save image data, resize, and restore
-                canvasRef.current.width = containerRef.current.clientWidth;
-                canvasRef.current.height = containerRef.current.clientHeight;
+                const canvas = canvasRef.current;
+                const container = containerRef.current; // capture ref value
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return;
+
+                // Save current content
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = canvas.width;
+                tempCanvas.height = canvas.height;
+                const tempCtx = tempCanvas.getContext('2d');
+                if (tempCtx) {
+                    tempCtx.drawImage(canvas, 0, 0);
+                }
+
+                // Resize
+                canvas.width = container.clientWidth;
+                canvas.height = container.clientHeight;
+
+                // Restore content (scaled to fit new size)
+                // We assume we want to stretch/shrink to fit the new view
+                // This preserves the relative drawing
+                ctx.drawImage(
+                    tempCanvas,
+                    0, 0, tempCanvas.width, tempCanvas.height,
+                    0, 0, canvas.width, canvas.height
+                );
+
+                // Restore context styles as resetting width resets context
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
             }
         };
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
-        return () => window.removeEventListener('resize', resizeCanvas);
+
+        // Use ResizeObserver for more accurate container sizing changes
+        const resizeObserver = new ResizeObserver(() => {
+            handleResize();
+        });
+
+        if (containerRef.current) {
+            resizeObserver.observe(containerRef.current);
+        }
+
+        // Initial sizing
+        handleResize();
+
+        return () => {
+            resizeObserver.disconnect();
+        };
     }, []);
 
     return (

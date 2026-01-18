@@ -121,7 +121,7 @@ export class GameService {
         // Ensure player hasn't already guessed correctly
         const alreadyGuessed = room.gameState.correctlyGuessedPlayerIds.includes(player.id);
         
-        if (!isDrawer && !alreadyGuessed && guess.toLowerCase() === targetWord.toLowerCase()) {
+        if (!isDrawer && !alreadyGuessed && guess.toLowerCase().includes(targetWord.toLowerCase())) {
             // Correct Guess!
             
             // Mark as guessed
