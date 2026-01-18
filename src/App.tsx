@@ -34,9 +34,9 @@ const App: React.FC = () => {
   const [roundWinners, setRoundWinners] = useState<string[]>([]);
 
   // Debug State
-  // const [showLogs, setShowLogs] = useState(false);
-  // const [logs, setLogs] = useState<string[]>([]);
-  // const logsEndRef = useRef<HTMLDivElement>(null);
+  const [showLogs, setShowLogs] = useState(false);
+  const [logs, setLogs] = useState<string[]>([]);
+  const logsEndRef = useRef<HTMLDivElement>(null);
 
   // Drawing State
   const [color, setColor] = useState('#000000');
@@ -45,17 +45,17 @@ const App: React.FC = () => {
   const clearCanvasRef = useRef<() => void>(() => { });
 
   // Auto-scroll logs
-  // useEffect(() => {
-  //   if (showLogs && logsEndRef.current) {
-  //     logsEndRef.current.scrollIntoView({ behavior: "smooth" });
-  //   }
-  // }, [logs, showLogs]);
+  useEffect(() => {
+    if (showLogs && logsEndRef.current) {
+      logsEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [logs, showLogs]);
 
   useEffect(() => {
     // Subscribe to Pi Service Logs
-    // piService.onLog((msg) => {
-    //   setLogs(prev => [...prev, msg]);
-    // });
+    piService.onLog((msg) => {
+      setLogs(prev => [...prev, msg]);
+    });
 
     const init = async () => {
       try {
@@ -307,12 +307,12 @@ const App: React.FC = () => {
           )}
         </div>
         <div className="flex items-center gap-4">
-          {/* <button
+          <button
             onClick={() => setShowLogs(!showLogs)}
             className="text-xs text-gray-400 border border-gray-600 px-2 py-1 rounded hover:bg-gray-700"
           >
             {showLogs ? 'Hide Logs' : 'Debug Logs'}
-          </button> */}
+          </button>
           <div className="flex items-center bg-gray-700 rounded-full px-3 py-1">
             <span className="text-yellow-400 font-bold mr-1">¢</span>
             <span className="text-sm font-mono">{coins}</span>
@@ -340,7 +340,7 @@ const App: React.FC = () => {
       </header>
 
       {/* Debug Logs Overlay */}
-      {/* {showLogs && (
+      {showLogs && (
         <div className="fixed top-14 left-0 right-0 h-48 bg-black/90 z-[100] overflow-y-auto border-b border-gray-600 p-2 font-mono text-xs text-green-400">
           {logs.length === 0 && <span className="text-gray-500">Waiting for logs...</span>}
           {logs.map((log, i) => (
@@ -350,7 +350,7 @@ const App: React.FC = () => {
           ))}
           <div ref={logsEndRef} />
         </div>
-      )} */}
+      )}
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden relative">

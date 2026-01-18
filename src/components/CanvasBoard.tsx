@@ -152,65 +152,28 @@ export const CanvasBoard: React.FC<CanvasBoardProps> = ({
         };
     }, [isDrawer, drawLine, clearCanvas]);
 
-    // Resize Observer
+    // Set initial resolution once and let CSS handle display scaling
     useEffect(() => {
-        const handleResize = () => {
-            if (containerRef.current && canvasRef.current) {
-                const canvas = canvasRef.current;
-                const container = containerRef.current; // capture ref value
-                const ctx = canvas.getContext('2d');
-                if (!ctx) return;
+        if (canvasRef.current && containerRef.current) {
+            // Set a fixed high resolution for the canvas "backing store"
+            // This prevents data loss during resize (as we don't resize the backing store)
+            // and prevents distortion as we maintain a square aspect_ratio in CSS
+            canvasRef.current.width = 1000;
+            canvasRef.current.height = 1000;
 
-                // Save current content
-                const tempCanvas = document.createElement('canvas');
-                tempCanvas.width = canvas.width;
-                tempCanvas.height = canvas.height;
-                const tempCtx = tempCanvas.getContext('2d');
-                if (tempCtx) {
-                    tempCtx.drawImage(canvas, 0, 0);
-                }
-
-                // Resize
-                canvas.width = container.clientWidth;
-                canvas.height = container.clientHeight;
-
-                // Restore content (scaled to fit new size)
-                // We assume we want to stretch/shrink to fit the new view
-                // This preserves the relative drawing
-                ctx.drawImage(
-                    tempCanvas,
-                    0, 0, tempCanvas.width, tempCanvas.height,
-                    0, 0, canvas.width, canvas.height
-                );
-
-                // Restore context styles as resetting width resets context
+            const ctx = canvasRef.current.getContext('2d');
+            if (ctx) {
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
             }
-        };
-
-        // Use ResizeObserver for more accurate container sizing changes
-        const resizeObserver = new ResizeObserver(() => {
-            handleResize();
-        });
-
-        if (containerRef.current) {
-            resizeObserver.observe(containerRef.current);
         }
-
-        // Initial sizing
-        handleResize();
-
-        return () => {
-            resizeObserver.disconnect();
-        };
     }, []);
 
     return (
         <div ref={containerRef} className="w-full h-full bg-white rounded-lg shadow-inner overflow-hidden relative cursor-crosshair touch-none">
             <canvas
                 ref={canvasRef}
-                className="block"
+                className="block w-full h-full"
                 onMouseDown={handleStart}
                 onMouseMove={handleMove}
                 onMouseUp={handleEnd}
